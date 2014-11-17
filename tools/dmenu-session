@@ -145,6 +145,8 @@ else
     _sudo="sudo"
 fi
 
+[ X"${LOGNAME}" = X"root" ] && _sudo=""
+
 case "${choice}" in
     logout)
         if ! command -v "i3-msg" >/dev/null 2>&1; then

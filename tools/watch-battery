@@ -69,6 +69,7 @@ for arg in "${@}"; do #parse options
 done
 
 exec 9>/tmp/"$(_basename ${0})".lock
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename ${0})".lock
 if ! flock -n 9 ; then
     _notify "$(_basename ${0}): another instance is running";
     exit 1
@@ -87,6 +88,14 @@ batt="$(acpi -b |awk '{if ($0 ~ "%,") sub("%,", ""); else sub("%", ""); print $4
 watch_battery_current="$(cat /tmp/"$(_basename ${0})" 2>/dev/null)"
 action="$(minos-config hibernate-bin 2>/dev/null)"
 [ -z "${action}" ] && action="$(command -v pm-hibernate)"
+
+if command -v "gksudo" >/dev/null 2>&1; then
+    _sudo="gksudo"
+else
+    _sudo="sudo"
+fi
+
+[ X"${LOGNAME}" = X"root" ] && _sudo=""
 
 # If Discharging...
 if [ X"${stat}" = X"Discharging" ]; then
@@ -111,7 +120,7 @@ if [ X"${stat}" = X"Discharging" ]; then
             if [ -x "$(command -v mpc)" ]; then
                 mpc stop
             fi
-            sudo ${action}
+            ${_sudo} ${action}
         fi
 
     # Battery under 7% -> print an alert msg and don't repeat it again
@@ -130,3 +139,4 @@ if [ X"${stat}" = X"Discharging" ]; then
 fi
 
 printf "%s\\n" "${watch_battery_current}" > /tmp/"$(_basename ${0})"
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename ${0})" || :
