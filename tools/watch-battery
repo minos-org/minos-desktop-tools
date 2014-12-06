@@ -105,7 +105,7 @@ stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
 #battery percentage
 batt="$(acpi -b |awk '{if ($0 ~ "%,") sub("%,", ""); else sub("%", ""); print $4}')"
 watch_battery_current="$(cat /tmp/"$(_basename ${0})" 2>/dev/null)"
-action="$(minos-config hibernate-bin 2>/dev/null)"
+action="$(minos-config hibernate-custom 2>/dev/null)"
 [ -z "${action}" ] && action="$(command -v pm-hibernate)"
 
 if command -v "gksudo" >/dev/null 2>&1; then
