@@ -26,31 +26,33 @@ _die()
 _get_minos_config()
 {
     [ -z "${1}" ] && return 1
-    if [ -z "${config_file}" ]; then
-        _get_minos_config_var_option="$(awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' "${HOME}"/.minos/config 2>/dev/null)"
-    else
-        _get_minos_config_var_option="$(awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' "${config_file}" 2>/dev/null)"
-    fi
-
-    [ -z "${_get_minos_config_var_option}" ] && _get_minos_config_var_option="$(awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' /etc/minos/config 2>/dev/null)"
-    [ -z "${_get_minos_config_var_option}" ] && return 1 || { eval _get_minos_config_var_option="${_get_minos_config_var_option}"; printf "%s\\n" "${_get_minos_config_var_option}"; }
+    [ -z "${config_file}" ] &&                               \
+        _gmc_var_option="$(awk -v pattern="^${1} "           \
+            '$0 ~ pattern {$1=""; print substr($0,2); exit}' \
+            "${HOME}"/.minos/config 2>/dev/null)" ||         \
+        _gmc_var_option="$(awk -v pattern="^${1} "           \
+            '$0 ~ pattern {$1=""; print substr($0,2); exit}' \
+            "${config_file}" 2>/dev/null)"
+    [ -z "${_gmc_var_option}" ] &&                           \
+        _gmc_var_option="$(awk -v pattern="^${1} "           \
+            '$0 ~ pattern {$1=""; print substr($0,2); exit}' \
+            /etc/minos/config 2>/dev/null)"
+    [ -z "${_gmc_var_option}" ] && return 1 ||               \
+        { eval _gmc_var_option="${_gmc_var_option}";         \
+          printf "%s\\n" "${_gmc_var_option}"; }
 }
 
 _dump_minos_config()
 {
-    if [ -z "${config_file}" ]; then
-        _get_minos_config_var_home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>/dev/null)
-    else
-        _get_minos_config_var_home=$(awk '!/^#|^$/' "${config_file}" 2>/dev/null)
-    fi
-    _get_minos_config_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>/dev/null)
-    printf "%s\\n" "${_get_minos_config_var_home}" | sed "s: [ \t]*:=:" | column -s= -t
-    printf "%s\\n" "${_get_minos_config_var_etc}"  | sed "s: [ \t]*:=:" | column -s= -t
-    if [ -z "${_get_minos_config_var_home}" ] && [ -z "${_get_minos_config_var_etc}" ]; then
-        exit 1
-    else
-        exit 0
-    fi
+    [ -z "${config_file}" ] && \
+        _dpc_var_home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>/dev/null) || \
+        _dpc_var_home=$(awk '!/^#|^$/' "${config_file}" 2>/dev/null)
+    _dpc_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>/dev/null)
+    printf "%s\n%s" "${_dpc_var_home}" "${_dpc_var_etc}" |   \
+        awk '!a[$1]++ {sub(/[ \t]+/,"#"); print}' | sort -k 1 | column -s# -t
+
+    [ -z "${_dpc_var_home}" ] && [ -z "${_dpc_var_etc}" ] && \
+        exit 1 || exit 0
 }
 
 if [ ! -t 0 ]; then
@@ -67,10 +69,9 @@ for arg; do #parse options
         -d|--dump)   _dump_minos_config  ;;
         -c|--config)
             if [ "${#}" -gt "1" ]; then
-                shift
-                config_file="${1}"
-                shift
-                [ -f "${config_file}" ] || _die "'${config_file}' is not a valid configuration file"
+                shift; config_file="${1}"; shift
+                [ -r "${config_file}" ] || \
+                    _die "'${config_file}' is not a valid configuration file"
             else
                 _die "Option \`${arg}' requires a config file"
             fi
