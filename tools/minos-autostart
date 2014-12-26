@@ -32,9 +32,9 @@ for arg; do #parse options
 done
 
 [ X"$(minos-config autostart 2>/dev/null)" = X"no" ]  && return 0
-if [ -z "$(minos-config autostart-custom 2>/dev/null)" ]; then
+if [ -z "$(minos-config autostart-config 2>/dev/null)" ]; then
     [ -e /etc/minos/autostart ]       && exec /etc/minos/autostart
     [ -e "${HOME}"/.minos/autostart ] && exec "${HOME}"/.minos/autostart
 else
-   exec $(minos-config autostart-custom 2>/dev/null)
+   exec $(minos-config autostart-config 2>/dev/null)
 fi

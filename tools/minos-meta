@@ -25,7 +25,8 @@ _usage()
 _list()
 {
     printf "%s\\n" "list"
-    #TODO 25-12-2014 14:38 >> reverse links
+    exit
+    #TODO 25-12-2014 14:38 >> reverse links, @google
     #TODO 25-12-2014 14:38 >> dump m-app options
 }
 
@@ -35,19 +36,28 @@ if [ ! -t 0 ]; then
 fi
 
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
+if ! command -v "minos-config" >/dev/null 2>&1; then
+    printf "%s\\n" "${progname}: minos-config was not found!, exiting." >&2
+    exit 1
+fi
+
 case "${progname}" in
     minos-meta)
-        [ -z "${1}" ] && _usage
         for arg; do
             case "${arg}" in
                 --) shift;   break  ;;
                 -h|--help)   _usage ;;
                 --list)      _list  ;;
                 --list-full) _list full ;;
-                # -*) printf "%s\\n" \
-                #     "${progname}: unrecognized option \`${arg}'" >&2; _usage ;;
             esac
         done
+        if [ -z "${1}" ]; then
+            _usage
+        else
+            progname="${1}"; shift;
+            default_app="$(minos-config "${progname}")"
+        fi
         ;;
     *)
         default_app="$(minos-config "${progname}")"
@@ -55,19 +65,19 @@ case "${progname}" in
             default_app="$(printf "%s" "${progname}" | sed 's:-:_:g')"
             eval "default_app="\${$default_app}""
         fi
-
-        if [ -z "${default_app}" ]; then
-            printf "%s\\n" "${progname}: m-app not defined" >&2
-        else
-            if printf "%s" "${default_app}" | grep ":cli$" >/dev/null; then
-                default_app="${default_app%:cli}"
-                default_te="$(minos-config m-terminal)"
-                [ -z "${default_te}" ] && default_te="x-terminal-emulator"
-                #TODO 25-12-2014 13:55 >> use default user shell
-                # exec ${default_te} -title "${default_app}" -e sh -c "${default_app} $@"
-                exec ${default_te} -title "${default_app}" -e bash -c "${default_app} $@"
-            else
-                exec ${default_app} "${@}"
-            fi
-        fi
+        ;;
 esac
+
+if [ -z "${default_app}" ]; then
+    printf "%s\\n" "${progname}: m-app not defined" >&2
+else
+    if printf "%s" "${default_app}" | grep ":t" >/dev/null; then
+        default_app="${default_app%:t*}"
+        default_te="$(minos-config m-terminal)"
+        [ -z "${default_te}" ] && default_te="x-terminal-emulator"
+        [ -z "${SHELL}" ] && SHELL="bash"
+        exec ${default_te} -title "${default_app}" -e ${SHELL} -c "${default_app} $@"
+    else
+        exec ${default_app} "${@}"
+    fi
+fi

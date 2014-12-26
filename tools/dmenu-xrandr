@@ -179,8 +179,8 @@ _gen_mix_opts()
 _reload_wallpaper()
 {
     if command -v "feh" >/dev/null 2>&1; then
-        if [ -f "$(minos-config general-wallpaper 2>/dev/null)" ]; then
-            feh --bg-scale "$(minos-config general-wallpaper 2>/dev/null)"
+        if [ -f "$(minos-config wallpaper 2>/dev/null)" ]; then
+            feh --bg-scale "$(minos-config wallpaper 2>/dev/null)"
         fi
     fi
 }

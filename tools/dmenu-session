@@ -124,7 +124,7 @@ _get_i3lock_params()
 }
 
 if ! command -v "dmenu" >/dev/null 2>&1; then
-    printf "%s\\n" "you need to install 'dmenu' to run this program" >&2
+    printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): you need to install 'dmenu' to run this program" >&2
     exit 1
 fi
 
@@ -134,7 +134,7 @@ if [ ! -t 0 ]; then
 fi
 
 if [ -z "${1}" ]; then
-    choice="$(printf "%b\\n" "lock\nlogout\nrestart\nshutdown\nreboot\nsuspend\nhibernate" | ${DMENU})"
+    choice="$(printf "%b\\n" "lock\nlogout\nrelogin\nreboot\nshutdown\nsuspend\nhibernate" | ${DMENU})"
 else
     choice="${1}"
 fi
@@ -148,6 +148,21 @@ fi
 [ X"${LOGNAME}" = X"root" ] && _sudo=""
 
 case "${choice}" in
+    lock)
+        if ! command -v "i3lock" >/dev/null 2>&1; then
+            _die "you need to install 'i3lock' to run this option"
+        fi
+        lockprog="$(minos-config m-lock 2>/dev/null)"
+        [ -z "${lockprog}" ] && lockprog="i3lock"
+        [ X"${lockprog}" = X"i3lock" ] && i3lock_params="$(_get_i3lock_params)"
+        if [ X"${lockprog}" = X"i3lock" ]; then
+            #hack to allow spaces on wallpaper files
+            IFS='|'; ${lockprog} ${i3lock_params}
+        else
+            ${lockprog}
+        fi
+        ;;
+
     logout)
         if ! command -v "i3-msg" >/dev/null 2>&1; then
             _die "you need to install 'i3-msg' to run this option"
@@ -155,19 +170,11 @@ case "${choice}" in
         i3-msg exit &
         ;;
 
-    restart)
+    relogin)
         if ! command -v "i3-msg" >/dev/null 2>&1; then
             _die "you need to install i3-msg to run this option"
         fi
         i3-msg restart &
-        ;;
-
-    shutdown)
-        if ! command -v "dbus-send" >/dev/null 2>&1; then
-            PATH="${PATH}:/sbin/"
-            ${_sudo} shutdown -h now
-        fi
-        dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Stop
         ;;
 
     reboot)
@@ -178,36 +185,47 @@ case "${choice}" in
         dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Restart
         ;;
 
+    shutdown)
+        if ! command -v "dbus-send" >/dev/null 2>&1; then
+            PATH="${PATH}:/sbin/"
+            ${_sudo} shutdown -h now
+        fi
+        dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Stop
+        ;;
+
     suspend)
         PATH="${PATH}:/usr/sbin/"
-        suspend="$(minos-config suspend-custom 2>/dev/null)"
+        suspend="$(minos-config m-suspend 2>/dev/null)"
         [ -z "${suspend}" ] && suspend="pm-suspend"
         if ! command -v "${suspend}" >/dev/null 2>&1; then
             _die "you need to install '${suspend}' to run this option"
         fi
-
-        i3lock_params="$(_get_i3lock_params)"
-        IFS='|'; i3lock ${i3lock_params} & ${_sudo} ${suspend}
+        lockprog="$(minos-config m-lock 2>/dev/null)"
+        [ -z "${lockprog}" ] && lockprog="i3lock"
+        [ X"${lockprog}" = X"i3lock" ] && i3lock_params="$(_get_i3lock_params)"
+        if [ X"${lockprog}" = X"i3lock" ]; then
+            IFS='|'; ${lockprog} ${i3lock_params} & ${_sudo} ${suspend}
+        else
+            ${lockprog} & ${_sudo} ${suspend}
+        fi
         ;;
 
     hibernate)
         PATH="${PATH}:/usr/sbin/"
-        hibernate="$(minos-config hibernate-custom 2>/dev/null)"
+        hibernate="$(minos-config m-hibernate 2>/dev/null)"
         [ -z "${hibernate}" ] && hibernate="pm-hibernate"
         if ! command -v "${hibernate}" >/dev/null 2>&1; then
             _die "you need to install '${hibernate}' to run this option"
         fi
-
-        i3lock_params="$(_get_i3lock_params)"
-        IFS='|'; i3lock ${i3lock_params} & ${_sudo} ${hibernate}
-        ;;
-
-    lock)
-        if ! command -v "i3lock" >/dev/null 2>&1; then
-            _die "you need to install 'i3lock' to run this option"
+        lockprog="$(minos-config m-lock 2>/dev/null)"
+        [ -z "${lockprog}" ] && lockprog="i3lock"
+        [ X"${lockprog}" = X"i3lock" ] && i3lock_params="$(_get_i3lock_params)"
+        if [ X"${lockprog}" = X"i3lock" ]; then
+            IFS='|'; ${lockprog} ${i3lock_params} & ${_sudo} ${hibernate}
+        else
+            ${lockprog} & ${_sudo} ${hibernate}
         fi
-        i3lock_params="$(_get_i3lock_params)"
-        IFS='|'; i3lock ${i3lock_params} #hack to allow spaces on wallpaper files
         ;;
+
     *)  exit 1 ;;
 esac

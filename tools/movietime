@@ -106,9 +106,9 @@ _movietime()
         #run inhibit script
         "${susp_script}" > /dev/null 2>&1 &
         #run user defined script
-        _movietime_var_custom_script="$(minos-config movietime-custom 2>/dev/null)"
-        [ -z "${_movietime_var_custom_script}" ] && _movietime_var_custom_script="${HOME}/.movietime"
-        [ -x "${_movietime_var_custom_script}" ] && _movietime_var_output="$("${_movietime_var_custom_script}" start 2>&1 >/dev/null)"
+        _movietime_var_hook_script="$(minos-config movietime-hook 2>/dev/null)"
+        [ -z "${_movietime_var_hook_script}" ] && _movietime_var_hook_script="${HOME}/.movietime"
+        [ -x "${_movietime_var_hook_script}" ] && _movietime_var_output="$("${_movietime_var_hook_script}" start 2>&1 >/dev/null)"
         _notify "${prog}" "started"
     else
         #enable blanking, screen power saving
@@ -119,9 +119,9 @@ _movietime()
             rm -rf "${susp_script}"
         fi
         #kill user defined script
-        _movietime_var_custom_script="$(minos-config movietime-custom 2>/dev/null)"
-        [ -z "${_movietime_var_custom_script}" ] && _movietime_var_custom_script="${HOME}/.movietime"
-        [ -x "${_movietime_var_custom_script}" ] && _movietime_var_output="$("${_movietime_var_custom_script}" stop 2>&1 >/dev/null)"
+        _movietime_var_hook_script="$(minos-config movietime-hook 2>/dev/null)"
+        [ -z "${_movietime_var_hook_script}" ] && _movietime_var_hook_script="${HOME}/.movietime"
+        [ -x "${_movietime_var_hook_script}" ] && _movietime_var_output="$("${_movietime_var_hook_script}" stop 2>&1 >/dev/null)"
         _notify "${prog}" "stopped"
     fi
 }

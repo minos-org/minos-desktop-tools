@@ -2,7 +2,7 @@
 #description: minos-config query program
 #usage: minos-config [options] key
 
-#example: minos-config general-wallpaper
+#example: minos-config wallpaper
 #/usr/share/minos/wallpapers/minos.png
 
 _usage()
@@ -26,13 +26,15 @@ _die()
 _get_minos_config()
 {
     [ -z "${1}" ] && return 1
-    [ -z "${config_file}" ] &&                               \
+    if [ -z "${config_file}" ]; then
         _gmc_var_option="$(awk -v pattern="^${1} "           \
             '$0 ~ pattern {$1=""; print substr($0,2); exit}' \
-            "${HOME}"/.minos/config 2>/dev/null)" ||         \
+            "${HOME}"/.minos/config 2>/dev/null)"
+    else
         _gmc_var_option="$(awk -v pattern="^${1} "           \
             '$0 ~ pattern {$1=""; print substr($0,2); exit}' \
             "${config_file}" 2>/dev/null)"
+    fi
     [ -z "${_gmc_var_option}" ] &&                           \
         _gmc_var_option="$(awk -v pattern="^${1} "           \
             '$0 ~ pattern {$1=""; print substr($0,2); exit}' \

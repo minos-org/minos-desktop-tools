@@ -31,17 +31,28 @@ for arg; do #parse options
     esac
 done
 
-[ -z "$(minos-config statusbar-custom 2>/dev/null)" ] || exec sh -c "$(minos-config statusbar-custom 2>/dev/null)"
+progname="$(minos-config m-statusbar 2>/dev/null)"
+if [ ! -z "${progname}" ]; then
+    case "${progname}" in
+        minos-statusbar) break ;;
+        *) exec sh -c "${progname}" ;;
+    esac
+fi
+
 [ X"$(minos-config statusbar 2>/dev/null)" = X"no" ] && return 0
 
-if [ -f "${HOME}"/.minos/statusbar ]; then
-    minos_statusbar="${HOME}/.minos/statusbar"
-elif [ -f /etc/minos/statusbar ]; then
-    minos_statusbar="/etc/minos/statusbar"
+minos_statusbar="$(minos-config statusbar-config 2>/dev/null)"
+if [ -z "${minos_statusbar}" ]; then
+    if [ -f "${HOME}"/.minos/statusbar ]; then
+        minos_statusbar="${HOME}/.minos/statusbar"
+    elif [ -f /etc/minos/statusbar ]; then
+        minos_statusbar="/etc/minos/statusbar"
+    fi
 fi
 
 if [ -z "${minos_statusbar}" ]; then
-    return 0
+    printf "%s\\n" "minos-statusbar: couldn't find config file, exiting." >&2
+    return 1
 else
     minos_statusbar_icons="$(minos-config statusbar-icons 2>/dev/null)"
     [ -z "${minos_statusbar_icons}" ] && minos_statusbar_icons="sm4tik"
