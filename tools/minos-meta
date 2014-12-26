@@ -1,0 +1,73 @@
+#!/bin/sh
+#minos-meta: launch default apps in minos http://minos.io/doc/config#default_apps
+#       this is a multi-call program, similar to busybox in the way it's executed
+#usage: minos-meta m-app options || m-app options
+
+#example: minos-meta m-file-manager
+#the default m-file-manager is launched
+_usage()
+{
+    printf "%s\\n" "Usage: minos-meta m-app [arguments]..." >&2
+    printf "%s\\n" "   or: minos-meta --list[-full]" >&2
+    printf "%s\\n" "   or: m-app [arguments]..."  >&2
+    printf "\\n" >&2
+    printf "%s\\n" "minos-meta is a multi-call program used to launch" >&2
+    printf "%s\\n" "default apps in minos. Most people will create a link" >&2
+    printf "%s\\n" "to minos-meta for each generic app they wish to manage." >&2
+    printf "\\n" >&2
+    printf "%s\\n" "E.g: m-pdf -> minos-meta, on this setup minos-meta will" >&2
+    printf "%s\\n" "read the configuration file (http://minos.io/doc/config)" >&2
+    printf "%s\\n" "and will launch the default pdf viewer, if none is set" >&2
+    printf "%s\\n" "it'll exit with an error." >&2
+    exit 1
+}
+
+_list()
+{
+    printf "%s\\n" "list"
+    #TODO 25-12-2014 14:38 >> reverse links
+    #TODO 25-12-2014 14:38 >> dump m-app options
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+case "${progname}" in
+    minos-meta)
+        [ -z "${1}" ] && _usage
+        for arg; do
+            case "${arg}" in
+                --) shift;   break  ;;
+                -h|--help)   _usage ;;
+                --list)      _list  ;;
+                --list-full) _list full ;;
+                # -*) printf "%s\\n" \
+                #     "${progname}: unrecognized option \`${arg}'" >&2; _usage ;;
+            esac
+        done
+        ;;
+    *)
+        default_app="$(minos-config "${progname}")"
+        if [ -z "${default_app}" ]; then
+            default_app="$(printf "%s" "${progname}" | sed 's:-:_:g')"
+            eval "default_app="\${$default_app}""
+        fi
+
+        if [ -z "${default_app}" ]; then
+            printf "%s\\n" "${progname}: m-app not defined" >&2
+        else
+            if printf "%s" "${default_app}" | grep ":cli$" >/dev/null; then
+                default_app="${default_app%:cli}"
+                default_te="$(minos-config m-terminal)"
+                [ -z "${default_te}" ] && default_te="x-terminal-emulator"
+                #TODO 25-12-2014 13:55 >> use default user shell
+                # exec ${default_te} -title "${default_app}" -e sh -c "${default_app} $@"
+                exec ${default_te} -title "${default_app}" -e bash -c "${default_app} $@"
+            else
+                exec ${default_app} "${@}"
+            fi
+        fi
+esac
