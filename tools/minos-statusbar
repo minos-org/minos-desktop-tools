@@ -18,10 +18,11 @@ _die()
     _usage
 }
 
-if [ ! -t 0 ]; then
-    #there is input comming from pipe or file, add to the end of $@
-    set -- "${@}" $(cat)
-fi
+exec 0>/dev/null #i3bar click events (58e68) make impossible to read stdin without crashing it
+#if [ ! -t 0 ]; then
+    ##there is input comming from pipe or file, add to the end of $@
+    #set -- "${@}" $(cat)
+#fi
 
 for arg; do #parse options
     case "${arg}" in
