@@ -137,9 +137,9 @@ batt_last_seen="$(cat /tmp/"${progname}" 2>/dev/null)"
 [ X"${LOGNAME}" = X"root" ] && user=$(grep 1000 /etc/group | cut -d: -f1) || user="${LOGNAME}"
 action="$(HOME=/home/$user minos-config watch-battery-action 2>/dev/null)"
 [ -z "${action}" ] && action="$(command -v pm-hibernate)"
-batt_values="$(HOME=/home/$user minos-config watch-battery-values 2>/dev/null)"
-[ -z "$(_valid_batt_values "${batt_values}")" ] && batt_values="15,10,7,5"
-batt_values="$(_sort_batt_values "${batt_values}")"
+batt_at="$(HOME=/home/$user minos-config watch-battery-at 2>/dev/null)"
+[ -z "$(_valid_batt_values "${batt_at}")" ] && batt_at="15,10,7,5"
+batt_at="$(_sort_batt_values "${batt_at}")"
 #=============
 
 if command -v "gksudo" >/dev/null 2>&1; then
@@ -150,7 +150,7 @@ fi
 
 # If Discharging...
 if [ X"${stat}" = X"Discharging" ]; then
-    batt_values_buf="${batt_values}"; i="0"
+    batt_values_buf="${batt_at}"; i="0"
     while [ "${batt_values_buf}" ]; do
         batt_value="${batt_values_buf%%,*}"; i="$((${i}+1))"
         if [ "${batt_current}" -lt "${batt_value}" ]; then
