@@ -40,7 +40,7 @@ _get_minos_config()
             '$0 ~ pattern {$1=""; print substr($0,2); exit}' \
             /etc/minos/config 2>/dev/null)"
     [ -z "${_gmc_var_option}" ] && return 1 ||               \
-        { eval _gmc_var_option="${_gmc_var_option}";         \
+        { eval "_gmc_var_option=\"${_gmc_var_option}\"";     \
           printf "%s\\n" "${_gmc_var_option}"; }
 }
 
