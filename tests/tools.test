@@ -200,15 +200,15 @@ test X"$(movietime 2>&1)" = X"movietime: stopped"
 sleep 0.5 && test X"$(pgrep -f "movietime-susp")" = X""
 @end
 
-@begin{music-control}
-music-control;     test X"${?}"                = X"1"
-music-control cui; test X"${?}"                = X"1"
-music-control -h; test X"${?}"                 = X"1"
-printf "%s" '-h' | music-control; test X"${?}" = X"1"
-test X"$(music-control)"                       = X""
-test X"$(music-control 2>&1 | head -1)"                     = X"Usage: music-control play|pause|toggle|next|previous"
-test X"$(music-control cui 2>&1 | head -1)"                 = X"Usage: music-control play|pause|toggle|next|previous"
-test X"$(printf "%s" 'cui' | music-control 2>&1 | head -1)" = X"Usage: music-control play|pause|toggle|next|previous"
+@begin{multimedia-control}
+multimedia-control;     test X"${?}"                = X"1"
+multimedia-control cui; test X"${?}"                = X"1"
+multimedia-control -h; test X"${?}"                 = X"1"
+printf "%s" '-h' | multimedia-control; test X"${?}" = X"1"
+test X"$(multimedia-control)"                       = X""
+test X"$(multimedia-control 2>&1 | head -1)"                     = X"Usage: multimedia-control play|pause|toggle|next|previous"
+test X"$(multimedia-control cui 2>&1 | head -1)"                 = X"Usage: multimedia-control play|pause|toggle|next|previous"
+test X"$(printf "%s" 'cui' | multimedia-control 2>&1 | head -1)" = X"Usage: multimedia-control play|pause|toggle|next|previous"
 @end
 
 @begin{say}
