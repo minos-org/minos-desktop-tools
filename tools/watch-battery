@@ -8,16 +8,6 @@
 #*/3 * * * * /path/to/this/script
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
-#if ! pgrep upowerd >/dev/null; then
-    #exit 1
-#fi
-
-_usage()
-{
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)')" >&2
-    printf "%s\\n" "Battery guard, it should be run in a cron job: */3 * * * * $(expr "${0}" : '.*/\([^/]*\)')" >&2
-    exit 1
-}
 
 _basename()
 {
@@ -37,6 +27,13 @@ _basename()
     printf "%s\\n" "${_basename_var_name}"
 }
 
+_usage()
+{
+    printf "%s\\n" "Usage: $(_basename "${0}")" >&2
+    printf "%s\\n" "This program should be run as a cron job, e.g.: */3 * * * * $(_basename "${0}")" >&2
+    exit 1
+}
+
 _notify()
 {
     [ -z "${1}" ] && return 1
@@ -45,28 +42,31 @@ _notify()
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if [ X"${LOGNAME}" = X"root" ]; then
             #hack to allow notifications from cronjobs
-            pid=$(pgrep dbus-launch|head -1)
-            user=$(grep -z USER /proc/"${pid}"/environ | sed 's/USER=//')
-            dbus="$(awk '/^DBUS_SESSION_BUS_ADDRESS/ {sub(/DBUS_SESSION_BUS_ADDRESS=/,""); print $0; exit}' /home/"${user}"/.dbus/session-bus/$(dbus-uuidgen --get)-*)"
-            display=$(grep -z DISPLAY /proc/"${pid}"/environ | sed 's/DISPLAY=//')
+            _notify_var_pid=$(pgrep dbus-launch|head -1)
+            _notify_var_user=$(grep -z USER /proc/"${_notify_var_pid}"/environ | sed 's/USER=//')
+            _notify_var_dbus="$(awk \
+                '/^DBUS_SESSION_BUS_ADDRESS/ {sub(/DBUS_SESSION_BUS_ADDRESS=/,""); print $0; exit}' \
+                /home/"${_notify_var_user}"/.dbus/session-bus/$(dbus-uuidgen --get)-*)"
+            _notify_var_display=$(grep -z DISPLAY /proc/"${_notify_var_pid}"/environ | sed 's/DISPLAY=//')
 
-            if ! sudo -u "${user}" sh -c "DBUS_SESSION_BUS_ADDRESS=\"${dbus}\" DISPLAY=\"${display}\" notify-send -t 1000 \"${1}\"  \"${2}\""; then
+            if ! sudo -u "${_notify_var_user}" sh -c \
+                "DBUS_SESSION_BUS_ADDRESS=\"${_notify_var_dbus}\" DISPLAY=\"${_notify_var_display}\" notify-send -t 1000 \"${1}\"  \"${2}\""; then
                 if command -v "gxmessage" 2>/dev/null; then
-                    font="Monaco 9"
-                    gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+                    _notify_var_font="Monaco 9"
+                    gxmessage "${_notify_var_font:+-fn "$_notify_var_font"}" "${1} ${2}" "ok"
                 else
-                    font="fixed"
-                    xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+                    _notify_var_font="fixed"
+                    xmessage "${_notify_var_font:+-fn "$_notify_var_font"}" "${1} ${2}" "ok"
                 fi
             fi
         else
             if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
                 if command -v "gxmessage" 2>/dev/null; then
-                    font="Monaco 9"
-                    gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+                    _notify_var_font="Monaco 9"
+                    gxmessage "${_notify_var_font:+-fn "$_notify_var_font"}" "${1} ${2}" "ok"
                 else
-                    font="fixed"
-                    xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+                    _notify_var_font="fixed"
+                    xmessage "${_notify_var_font:+-fn "$_notify_var_font"}" "${1} ${2}" "ok"
                 fi
             fi
         fi
@@ -79,6 +79,34 @@ _notify()
     fi
 }
 
+_valid_batt_values()
+{
+    if [ -z "${1}" ]; then
+        return 1
+    else
+        _vbv_var_result="$(printf "%s" "${1}" | awk '{ gsub(/^[ \t]+|[ \t]+$/, ""); print }')"
+        while [ "${_vbv_var_result}" ]; do
+            _vbv_var_option="${_vbv_var_result%%,*}"
+            if ! printf "%s" "${_vbv_var_option}" | grep -v "[^0-9]" >/dev/null; then
+                return 1
+            fi
+            [ X"${_vbv_var_result}" = X"${_vbv_var_option}" ] && _vbv_var_result='' \
+                || _vbv_var_result="${_vbv_var_result#*,}"
+        done
+        printf "%s" "${1}"
+    fi
+}
+
+_sort_batt_values()
+{ if [ -z "${1}" ]; then
+        return 1
+    else
+        _sbv_var_result="$(printf "%s" "${1}" | awk '{ gsub(/^[ \t]+|[ \t]+$/, ""); print }')"
+        _sbv_var_result="$(printf "%s" "${_sbv_var_result}" | tr "," "\n" | sort -n |tr "\n" ",")"
+        printf "%s" "${_sbv_var_result%,}"
+    fi
+}
+
 for arg in "${@}"; do #parse options
     case "${arg}" in
         --) shift; break  ;;
@@ -87,15 +115,16 @@ for arg in "${@}"; do #parse options
     esac
 done
 
-exec 9>/tmp/"$(_basename ${0})".lock
-[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename ${0})".lock
+progname="$(_basename "${0}")"
+exec 9>/tmp/"${progname}".lock
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${progname}".lock
 if ! flock -n 9 ; then
-    _notify "$(_basename ${0}): another instance is running";
+    _notify "${progname}: another instance is running";
     exit 1
 fi
 
 if [ ! -f "$(command -v notify-send)" ] || [ ! -f "$(command -v pm-hibernate)" ] || [ ! -f "$(command -v acpi)" ]; then
-    _notify  "Error" "you need install acpi, notify-send and pm-utils to run this program"
+    _notify  "Error" "you need to install acpi, notify-send and pm-utils to run this program"
     exit 1
 fi
 
@@ -103,11 +132,15 @@ fi
 #current battery status (Charging/Discharging/AC/Unknown)
 stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
 #battery percentage
-batt="$(acpi -b |awk '{if ($0 ~ "%,") sub("%,", ""); else sub("%", ""); print $4}')"
-watch_battery_current="$(cat /tmp/"$(_basename ${0})" 2>/dev/null)"
+batt_current="$(acpi -b |awk '{if ($0 ~ "%,") sub("%,", ""); else sub("%", ""); print $4}')"
+batt_last_seen="$(cat /tmp/"${progname}" 2>/dev/null)"
 [ X"${LOGNAME}" = X"root" ] && user=$(grep 1000 /etc/group | cut -d: -f1) || user="${LOGNAME}"
-action="$(minos-config -c /home/${user}/.minos/config m-session-manager 2>/dev/null)"
-[ -z "${action}" ] && action="$(command -v pm-hibernate)" || action="${action} hibernate"
+action="$(HOME=/home/$user minos-config watch-battery-action 2>/dev/null)"
+[ -z "${action}" ] && action="$(command -v pm-hibernate)"
+batt_values="$(HOME=/home/$user minos-config watch-battery-values 2>/dev/null)"
+[ -z "$(_valid_batt_values "${batt_values}")" ] && batt_values="15,10,7,5"
+batt_values="$(_sort_batt_values "${batt_values}")"
+#=============
 
 if command -v "gksudo" >/dev/null 2>&1; then
     _sudo="gksudo"
@@ -115,48 +148,47 @@ else
     _sudo="sudo"
 fi
 
-[ X"${LOGNAME}" = X"root" ] && _sudo=""
-
 # If Discharging...
 if [ X"${stat}" = X"Discharging" ]; then
-    # Battery under 5% -> force to hibernate
-    if [ "${batt}" -lt "5" ]; then
-        watch_battery_current="5"
-        _notify "Critical" "battery under 5%, the system will hibernate in 30 seconds, unless you plugin the computer"
-        i=0 ; while [ "${i}" -lt "30" ]; do
-            sleep 1
-            stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
-            if [ X"${stat}" != X"Discharging" ]; then
-                _notify  "Charging" "charging now..."
-                break
-            fi
-            i="$((${i} + 1))"
-        done
+    batt_values_buf="${batt_values}"; i="0"
+    while [ "${batt_values_buf}" ]; do
+        batt_value="${batt_values_buf%%,*}"; i="$((${i}+1))"
+        if [ "${batt_current}" -lt "${batt_value}" ]; then
+            case "${i}" in
+                1)  # Battery in the latest valid value -> force to take action
+                    _notify "Critical" "battery under ${batt_value}%, the system will hibernate in 30 seconds, unless you plugin the computer"
+                    j=0 ; while [ "${j}" -lt "30" ]; do
+                        sleep 1
+                        stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
+                        if [ X"${stat}" != X"Discharging" ]; then
+                            _notify  "Charging" "charging now..."
+                            break
+                        fi
+                        j="$((${j} + 1))"
+                    done
 
-        #check a last time if nobody has pluged in the machine, if not hibernate it
-        stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
+                    #check for the last time if someone has pluged in the machine
+                    stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
 
-        if [ X"${stat}" = X"Discharging" ]; then
-            if [ -x "$(command -v mpc)" ]; then
-                mpc stop
-            fi
-            ${_sudo} ${action}
+                    if [ X"${stat}" = X"Discharging" ]; then
+                        [ -x "$(command -v mpc)" ] && mpc stop
+                        if [ X"${LOGNAME}" = X"root" ]; then
+                            HOME=/home/$user USER=$user DISPLAY=:0 ${action}
+                        else
+                            ${_sudo} ${action}
+                        fi
+                    fi
+                    ;;
+                *)
+                    [ X"${batt_last_seen}" = X"${batt_value}" ] && exit 0
+                    _notify  "Warning" "battery under ${batt_value}%"
+                    batt_last_seen="${batt_value}"
+                    ;;
+            esac
+            printf "%s\\n" "${batt_last_seen}" > /tmp/"${progname}"
+            [ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${progname}" || :
+            break
         fi
-
-    # Battery under 7% -> print an alert msg and don't repeat it again
-    elif [ "${batt}" -lt "7" ] && [ "${batt}" -gt "4" ] && [ "${watch_battery_current}" != "7" ]; then
-        watch_battery_current="7"
-        _notify  "Warning" "battery under 7%"
-    # Battery under 10% -> print an alert msg and don't repeat it again
-    elif [ "${batt}" -lt "10" ] && [ "${batt}" -gt "6" ] && [ "$watch_battery_current" != "10" ]; then
-        watch_battery_current="10"
-        _notify  "Warning" "battery under 10%"
-    # Battery under 15% -> print an alert msg and don't repeat it again
-    elif [ "${batt}" -lt "15" ] && [ "${batt}" -gt "9" ] && [ "${watch_battery_current}" != "15" ]; then
-        watch_battery_current="15"
-        _notify  "Warning" "battery under 15%"
-    fi
+        [ X"${batt_values_buf}" = X"${batt_value}" ] && batt_values_buf='' || batt_values_buf="${batt_values_buf#*,}"
+    done
 fi
-
-printf "%s\\n" "${watch_battery_current}" > /tmp/"$(_basename ${0})"
-[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename ${0})" || :
