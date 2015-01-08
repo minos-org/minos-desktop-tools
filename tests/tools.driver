@@ -14,16 +14,21 @@ tools_db="./tests/tools.test"
 PS4=">>"
 
 #test tools
-TOOLS="$(find "${tools}"  -type f -exec basename '{}' ';')"
-TESTS="$(grep '^@begin' "${tools_db}" | sed -e 's/^@begin{//' -e 's/}.*$//')"
-TOOLS_WITH_TEST="$(printf "%s\\n" ${TOOLS} ${TESTS} | awk 'x[$0]++')"
-
-mkfifo fifo1 && mkfifo fifo2
-if [ -e fifo1 ] && [ -e fifo2 ]; then
-    printf "%s\\n" "${TOOLS_WITH_TEST}" > fifo1 &
-    printf "%s\\n" "${TOOLS}"           > fifo2 &
-    TOOLS_WITHOUT_TEST="$(awk 'NR == FNR { A[$0]=1; next } !A[$0]' fifo1 fifo2)"
-    rm -rf fifo1; rm -rf fifo2
+if [ -z "${1}" ]; then
+    TOOLS="$(find "${tools}"  -type f -exec basename '{}' ';')"
+    TESTS="$(grep '^@begin' "${tools_db}" | sed -e 's/^@begin{//' -e 's/}.*$//')"
+    TOOLS_WITH_TEST="$(printf "%s\\n" ${TOOLS} ${TESTS} | awk 'x[$0]++')"
+    mkfifo fifo1 && mkfifo fifo2
+    if [ -e fifo1 ] && [ -e fifo2 ]; then
+        printf "%s\\n" "${TOOLS_WITH_TEST}" > fifo1 &
+        printf "%s\\n" "${TOOLS}"           > fifo2 &
+        TOOLS_WITHOUT_TEST="$(awk 'NR == FNR { A[$0]=1; next } !A[$0]' fifo1 fifo2)"
+        rm -rf fifo1; rm -rf fifo2
+    fi
+else
+    TOOLS="${@}"
+    TESTS="$(grep '^@begin' "${tools_db}" | sed -e 's/^@begin{//' -e 's/}.*$//')"
+    TOOLS_WITH_TEST="$(printf "%s\\n" ${TOOLS} ${TESTS} | awk 'x[$0]++')"
 fi
 
 if [ -n "${TOOLS_WITHOUT_TEST}" ]; then
