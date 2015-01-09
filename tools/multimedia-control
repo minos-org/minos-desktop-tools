@@ -1,5 +1,5 @@
 #!/bin/sh
-#description: control music apps, currently mpd && mplayerd
+#description: control music apps, currently mpd,mplayer,mpv
 #usage: music-control [play|pause|toggle|next|previous]
 
 #example: music-control next
@@ -45,10 +45,10 @@ _mpd()
 _music_control()
 {
     [ -z "${1}" ] && return 1
-    if [ -n "$(pgrep mplayer)" ] && [ -n "$(pgrep mpd)" ]; then
+    if [ -n "$(pgrep mplayer)" ] && [ -n "$(pgrep mpv)" ] && [ -n "$(pgrep mpd)" ]; then
         _mpd pause
     fi
-    if [ -n "$(pgrep mplayer)" ]; then
+    if [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
         _mplayer "${1}"
     elif [ -n "$(pgrep mpd)" ]; then
         _mpd "${1}"
