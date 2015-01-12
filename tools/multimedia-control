@@ -1,8 +1,8 @@
 #!/bin/sh
 #description: control music apps, currently mpd,mplayer,mpv
-#usage: music-control [play|pause|toggle|next|previous]
+#usage: multimedia-control [play|pause|toggle|next|previous]
 
-#example: music-control next
+#example: multimedia-control next
 #play next song in queue
 
 _usage()
@@ -42,17 +42,13 @@ _mpd()
     esac
 }
 
-_music_control()
+_multimedia_control()
 {
     [ -z "${1}" ] && return 1
-    if [ -n "$(pgrep mplayer)" ] && [ -n "$(pgrep mpv)" ] && [ -n "$(pgrep mpd)" ]; then
-        _mpd pause
-    fi
     if [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
-        _mplayer "${1}"
-    elif [ -n "$(pgrep mpd)" ]; then
-        _mpd "${1}"
+        [ "$(mpc status | grep playing)" ] && mpc pause 1>/dev/null || _mplayer "${1}"
     fi
+    [ -n "$(pgrep mpd)" ] && _mpd "${1}" || :
 }
 
 if [ ! -t 0 ]; then
@@ -71,4 +67,4 @@ case "${1}" in
     *)   _usage            ;;
 esac
 
-_music_control "${_param}"
+_multimedia_control "${_param}"
