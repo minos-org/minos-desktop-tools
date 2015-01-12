@@ -46,7 +46,12 @@ _multimedia_control()
 {
     [ -z "${1}" ] && return 1
     if [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
-        [ "$(mpc status | grep playing)" ] && mpc pause 1>/dev/null || _mplayer "${1}"
+        if [ "$(mpc status | grep playing)" ]; then
+            mpc pause 1>/dev/null
+        else
+            _mplayer "${1}"
+        fi
+        return "${?}"
     fi
     [ -n "$(pgrep mpd)" ] && _mpd "${1}" || :
 }
