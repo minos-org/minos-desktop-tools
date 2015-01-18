@@ -61,10 +61,6 @@ case "${progname}" in
         ;;
     *)
         default_app="$(minos-config "${progname}")"
-        if [ -z "${default_app}" ]; then
-            default_app="$(printf "%s" "${progname}" | sed 's:-:_:g')"
-            eval "default_app="\${$default_app}""
-        fi
         ;;
 esac
 
@@ -76,7 +72,7 @@ else
         default_te="$(minos-config m-terminal)"
         [ -z "${default_te}" ] && default_te="x-terminal-emulator"
         [ -z "${SHELL}" ] && SHELL="bash"
-        exec ${default_te} -title "${default_app}" -e ${SHELL} -c "${default_app} $@"
+        exec ${default_te} -title "${default_app}" -e ${SHELL} -c "eval ${default_app} $@"
     else
         exec ${default_app} "${@}"
     fi
