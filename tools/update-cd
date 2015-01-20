@@ -22,11 +22,9 @@ _basename()
 
 _meta_update_cd()
 {
-    for dir in $(find /home -maxdepth 1 -type d -path  "/*/*"); do
-        user="$(_basename "${dir}")"
-        if grep "${user}" /etc/passwd >/dev/null; then
-            su "${user}" -c "update-cd"
-        fi
+    _meta_update_cd_var_users="$(getent passwd | awk -F: '{if ($3 >= 1000 && $3 < 60000) print $1}')"
+    for _meta_update_cd_var_user in ${_meta_update_cd_var_users}; do
+        su "${_meta_update_cd_var_user}" -c "update-cd"
     done
     exit "${$?}"
 }
