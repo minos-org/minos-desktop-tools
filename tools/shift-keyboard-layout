@@ -36,22 +36,22 @@ _notify()
 
 _return_valid_layouts()
 {
-    [ -z "${1}" ] && { printf "%s" "${default_layouts}"; return; } || _return_valid_layouts_var_arg="${1}"
-    _return_valid_layouts_var_reference=$(awk '/! layout/,/! variant/ {if ($0 !~ "^$" && $1 !~ "!") print $1}' /usr/share/X11/xkb/rules/base.lst 2>&1)
-    _return_valid_layouts_var_arg="$(_str2lower "${_return_valid_layouts_var_arg}")"
-    _return_valid_layouts_var_arg="$(printf "%s" "${_return_valid_layouts_var_arg}" | sed 's: :,:g')"
-    _return_valid_layouts_var_cp="${_return_valid_layouts_var_arg}"
+    [ -z "${1}" ] && { printf "%s" "${default_layouts}"; return; } || _return_valid_layouts__arg="${1}"
+    _return_valid_layouts__reference=$(awk '/! layout/,/! variant/ {if ($0 !~ "^$" && $1 !~ "!") print $1}' /usr/share/X11/xkb/rules/base.lst 2>&1)
+    _return_valid_layouts__arg="$(_str2lower "${_return_valid_layouts__arg}")"
+    _return_valid_layouts__arg="$(printf "%s" "${_return_valid_layouts__arg}" | sed 's: :,:g')"
+    _return_valid_layouts__cp="${_return_valid_layouts__arg}"
 
-    while [ "${_return_valid_layouts_var_arg}" ]; do
-        _return_valid_layouts_var_option="${_return_valid_layouts_var_arg%%,*}"
-        if [ -z "$(printf "%s" "${_return_valid_layouts_var_reference}" | grep "${_return_valid_layouts_var_option}")" ]; then
+    while [ "${_return_valid_layouts__arg}" ]; do
+        _return_valid_layouts__option="${_return_valid_layouts__arg%%,*}"
+        if [ -z "$(printf "%s" "${_return_valid_layouts__reference}" | grep "${_return_valid_layouts__option}")" ]; then
              printf "%s" "${default_layouts}"; return;
         fi
-        [ X"${_return_valid_layouts_var_arg}" = X"${_return_valid_layouts_var_option}" ] \
-            && _return_valid_layouts_var_arg="" \
-            || _return_valid_layouts_var_arg="${_return_valid_layouts_var_arg#*,}"
+        [ X"${_return_valid_layouts__arg}" = X"${_return_valid_layouts__option}" ] \
+            && _return_valid_layouts__arg="" \
+            || _return_valid_layouts__arg="${_return_valid_layouts__arg#*,}"
     done
-     printf "%s" "${_return_valid_layouts_var_cp}"; return;
+     printf "%s" "${_return_valid_layouts__cp}"; return;
 }
 
 if [ ! -t 0 ]; then

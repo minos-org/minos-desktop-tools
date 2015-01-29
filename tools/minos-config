@@ -27,33 +27,33 @@ _get_minos_config()
 {
     [ -z "${1}" ] && return 1
     if [ -z "${config_file}" ]; then
-        _gmc_var_option="$(awk -v pattern="^${1} "           \
+        _gmc__option="$(awk -v pattern="^${1} "           \
             '$0 ~ pattern {$1=""; print substr($0,2); exit}' \
             "${HOME}"/.minos/config 2>/dev/null)"
     else
-        _gmc_var_option="$(awk -v pattern="^${1} "           \
+        _gmc__option="$(awk -v pattern="^${1} "           \
             '$0 ~ pattern {$1=""; print substr($0,2); exit}' \
             "${config_file}" 2>/dev/null)"
     fi
-    [ -z "${_gmc_var_option}" ] &&                           \
-        _gmc_var_option="$(awk -v pattern="^${1} "           \
+    [ -z "${_gmc__option}" ] &&                           \
+        _gmc__option="$(awk -v pattern="^${1} "           \
             '$0 ~ pattern {$1=""; print substr($0,2); exit}' \
             /etc/minos/config 2>/dev/null)"
-    [ -z "${_gmc_var_option}" ] && return 1 ||               \
-        { eval "_gmc_var_option=\"${_gmc_var_option}\"";     \
-          printf "%s\\n" "${_gmc_var_option}"; }
+    [ -z "${_gmc__option}" ] && return 1 ||               \
+        { eval "_gmc__option=\"${_gmc__option}\"";     \
+          printf "%s\\n" "${_gmc__option}"; }
 }
 
 _dump_minos_config()
 {
     [ -z "${config_file}" ] && \
-        _dpc_var_home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>/dev/null) || \
-        _dpc_var_home=$(awk '!/^#|^$/' "${config_file}" 2>/dev/null)
-    _dpc_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>/dev/null)
-    printf "%s\n%s" "${_dpc_var_home}" "${_dpc_var_etc}" |   \
+        _dpc__home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>/dev/null) || \
+        _dpc__home=$(awk '!/^#|^$/' "${config_file}" 2>/dev/null)
+    _dpc__etc=$(awk '!/^#|^$/'  /etc/minos/config 2>/dev/null)
+    printf "%s\n%s" "${_dpc__home}" "${_dpc__etc}" |   \
         awk '!a[$1]++ {sub(/[ \t]+/,"#"); print}' | sort -k 1 | column -s# -t
 
-    [ -z "${_dpc_var_home}" ] && [ -z "${_dpc_var_etc}" ] && \
+    [ -z "${_dpc__home}" ] && [ -z "${_dpc__etc}" ] && \
         exit 1 || exit 0
 }
 

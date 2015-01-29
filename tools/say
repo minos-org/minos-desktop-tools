@@ -40,19 +40,19 @@ _usage()
 _say()
 {
     [ -z "${1}" ] && return 1
-    _say_var_phrase="${*}"
+    _say__phrase="${*}"
 
-    while [ "${#_say_var_phrase}" -gt "99" ]; do
+    while [ "${#_say__phrase}" -gt "99" ]; do
         #TODO 29-06-2014 05:47 >> separate by word
-        _say_var_tmp="$(printf "%b" "${_say_var_phrase}" | cut -c1-99 | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
-        mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=${sl}&q=${_say_var_tmp}" > /dev/null 2>&1
-        _say_var_phrase="$(printf "%b" "${_say_var_phrase}" | cut -c100-"$((${#_say_var_phrase} + 1))")"
+        _say__tmp="$(printf "%b" "${_say__phrase}" | cut -c1-99 | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
+        mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=${sl}&q=${_say__tmp}" > /dev/null 2>&1
+        _say__phrase="$(printf "%b" "${_say__phrase}" | cut -c100-"$((${#_say__phrase} + 1))")"
         #http://stackoverflow.com/questions/4988155/is-there-a-bash-command-that-can-tell-the-size-of-a-shell-variable
     done
 
     #http://stackoverflow.com/questions/296536/urlencode-from-a-bash-script
-    _say_var_phrase="$(printf "%b" "${_say_var_phrase}" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
-    mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=${sl}&q=${_say_var_phrase}" > /dev/null 2>&1
+    _say__phrase="$(printf "%b" "${_say__phrase}" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
+    mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=${sl}&q=${_say__phrase}" > /dev/null 2>&1
 }
 
 if [ ! -t 0 ]; then

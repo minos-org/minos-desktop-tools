@@ -42,21 +42,21 @@ _screenshot()
     [ -z "${1}" ] && return 0
 
     if command -v "scrot" >/dev/null; then
-        _screenshot_var_bin="scrot"
-        [ -n "${flag_select}" ] && _screenshot_var_opt="-s" || _screenshot_var_opt=""
+        _screenshot__bin="scrot"
+        [ -n "${flag_select}" ] && _screenshot__opt="-s" || _screenshot__opt=""
     elif command -v "gnome-screenshot" >/dev/null; then
-        _screenshot_var_bin="gnome-screenshot"
-        [ -n "${flag_select}" ] && _screenshot_var_opt="-a" || _screenshot_var_opt=""
+        _screenshot__bin="gnome-screenshot"
+        [ -n "${flag_select}" ] && _screenshot__opt="-a" || _screenshot__opt=""
     elif command -v "import" >/dev/null; then
-        _screenshot_var_bin="import"
-        [ -n "${flag_select}" ] && _screenshot_var_opt=""   || _screenshot_var_opt="-window root"
+        _screenshot__bin="import"
+        [ -n "${flag_select}" ] && _screenshot__opt=""   || _screenshot__opt="-window root"
     else
         _notify "Error" "install either scrot, gnome-screenshot or imagemagick to run this program"
         exit 1
     fi
 
     [ -z "${flag_select}" ] && kill -9 $(pgrep notify-osd) >/dev/null 2>&1
-    eval "${_screenshot_var_bin} ${_screenshot_var_opt} ${1}"
+    eval "${_screenshot__bin} ${_screenshot__opt} ${1}"
 }
 
 if [ ! -t 0 ]; then

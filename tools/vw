@@ -37,20 +37,20 @@ _notify()
 
 _basename()
 {
-    [ -z "${1}" ] && return 1 || _basename_var_name="${1}"
-    [ -z "${2}" ] || _basename_var_suffix="${2}"
-    case "${_basename_var_name}" in
-        /*|*/*) _basename_var_name="$(expr "${_basename_var_name}" : '.*/\([^/]*\)')" ;;
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="$(expr "${_basename__name}" : '.*/\([^/]*\)')" ;;
     esac
 
-    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_name}" -gt "${#2}" ]; then
-        if [ X"$(printf "%s" "${_basename_var_name}" | cut -c"$((${#_basename_var_name} - ${#_basename_var_suffix} + 1))"-"${#_basename_var_name}")" \
-           = X"$(printf "%s" "${_basename_var_suffix}")" ]; then
-            _basename_var_name="$(printf "%s" "${_basename_var_name}" | cut -c1-"$((${#_basename_var_name} - ${#_basename_var_suffix}))")"
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
+           = X"$(printf "%s" "${_basename__suffix}")" ]; then
+            _basename__name="$(printf "%s" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
         fi
     fi
 
-    printf "%s\\n" "${_basename_var_name}"
+    printf "%s\\n" "${_basename__name}"
 }
 
 _dirname()
@@ -80,37 +80,37 @@ _vw()
 {
     [ -z "${1}" ] && return 1
     if [ -d "${1}" ]; then
-        _vw_var_dir="${1}"
+        _vw__dir="${1}"
         shift
-        cd -- "${_vw_var_dir}"
-        for _vw_var_img in *; do
-            if _validimage "${_vw_var_img}"; then
-                _vw_var_arr="${_vw_var_arr}|${_vw_var_img}"
+        cd -- "${_vw__dir}"
+        for _vw__img in *; do
+            if _validimage "${_vw__img}"; then
+                _vw__arr="${_vw__arr}|${_vw__img}"
             fi
         done
     elif _validimage "${1}"; then
-        _vw_var_dir="$(_dirname "${1}")"
-        _vw_var_arg="${1}"
-        _vw_var_arr="${_vw_var_arg}"
-        _vw_var_arr_b="$(_basename "${_vw_var_arg}")"
+        _vw__dir="$(_dirname "${1}")"
+        _vw__arg="${1}"
+        _vw__arr="${_vw__arg}"
+        _vw__arr_b="$(_basename "${_vw__arg}")"
         shift
 
-        cd -- "${_vw_var_dir}"
-        for _vw_var_img in *; do
-            [ X"${_vw_var_img}" = X"${_vw_var_arr_b}"  ] && continue
-            if _validimage "${_vw_var_img}"; then
-                _vw_var_arr="${_vw_var_arr}|${_vw_var_img}"
+        cd -- "${_vw__dir}"
+        for _vw__img in *; do
+            [ X"${_vw__img}" = X"${_vw__arr_b}"  ] && continue
+            if _validimage "${_vw__img}"; then
+                _vw__arr="${_vw__arr}|${_vw__img}"
             fi
         done
     else
         _notify "Error" "'${1}' is not a valid image file"
     fi
 
-    [ -z "${_vw_var_arr}" ] && return 1 || _vw_var_arr="${_vw_var_arr#|}"
+    [ -z "${_vw__arr}" ] && return 1 || _vw__arr="${_vw__arr#|}"
 
     IFS="|"
-    printf "%s\\n" "${viewer} ${_vw_var_arg}"
-    exec ${viewer} -f ${_vw_var_arr}
+    printf "%s\\n" "${viewer} ${_vw__arg}"
+    exec ${viewer} -f ${_vw__arr}
 }
 
 #if [ ! -t 0 ]; then #it doesn't work when mixed with pcmanfm

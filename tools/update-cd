@@ -7,24 +7,24 @@
 
 _basename()
 {   #alternative basename portable version, faster! but with possible drawbacks
-    [ -z "${1}" ] && return 1 || _basename_var_name="${1}"
-    [ -z "${2}" ] || _basename_var_suffix="${2}"
-    case "${_basename_var_name}" in
-        /*|*/*) _basename_var_name="${_basename_var_name##*/}"
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="${_basename__name##*/}"
     esac
 
-    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_name}" -gt "${#2}" ]; then
-        _basename_var_name="${_basename_var_name%$_basename_var_suffix}"
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        _basename__name="${_basename__name%$_basename__suffix}"
     fi
 
-    printf "%s" "${_basename_var_name}"
+    printf "%s" "${_basename__name}"
 }
 
 _meta_update_cd()
 {
-    _meta_update_cd_var_users="$(getent passwd | awk -F: '{if ($3 >= 1000 && $3 < 60000) print $1}')"
-    for _meta_update_cd_var_user in ${_meta_update_cd_var_users}; do
-        su "${_meta_update_cd_var_user}" -c "update-cd"
+    _meta_update_cd__users="$(getent passwd | awk -F: '{if ($3 >= 1000 && $3 < 60000) print $1}')"
+    for _meta_update_cd__user in ${_meta_update_cd__users}; do
+        su "${_meta_update_cd__user}" -c "update-cd"
     done
     exit "${$?}"
 }

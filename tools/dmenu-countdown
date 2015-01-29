@@ -117,36 +117,36 @@ tune_64='H4sIAP2Y61IAA+1ZfWxbVxW/tvPhtInjdCnL2rIa6kpp1bixmw+PduA0H30pXpql
 _arch()
 {   #check for system arch, returns [64|32]
     if [ -z "${MACHTYPE}" ]; then
-        _arch_var_arch="$(uname -m)"
+        _arch__arch="$(uname -m)"
     else
-        _arch_var_arch="$(printf "%s" "${MACHTYPE}" | cut -d- -f1)"
+        _arch__arch="$(printf "%s" "${MACHTYPE}" | cut -d- -f1)"
     fi
 
-    case "${_arch_var_arch}" in
-        x86_64) _arch_var_arch="64" ;;
-        i686)   _arch_var_arch="32" ;;
+    case "${_arch__arch}" in
+        x86_64) _arch__arch="64" ;;
+        i686)   _arch__arch="32" ;;
         *)      return 1 ;;
     esac
 
-    printf "%s" "${_arch_var_arch}"
+    printf "%s" "${_arch__arch}"
 }
 
 _basename()
 {
-    [ -z "${1}" ] && return 1 || _basename_var_name="${1}"
-    [ -z "${2}" ] || _basename_var_suffix="${2}"
-    case "${_basename_var_name}" in
-        /*|*/*) _basename_var_name="$(expr "${_basename_var_name}" : '.*/\([^/]*\)')" ;;
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="$(expr "${_basename__name}" : '.*/\([^/]*\)')" ;;
     esac
 
-    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_name}" -gt "${#2}" ]; then
-        if [ X"$(printf "%s" "${_basename_var_name}" | cut -c"$((${#_basename_var_name} - ${#_basename_var_suffix} + 1))"-"${#_basename_var_name}")" \
-           = X"$(printf "%s" "${_basename_var_suffix}")" ]; then
-            _basename_var_name="$(printf "%s" "${_basename_var_name}" | cut -c1-"$((${#_basename_var_name} - ${#_basename_var_suffix}))")"
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
+           = X"$(printf "%s" "${_basename__suffix}")" ]; then
+            _basename__name="$(printf "%s" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
         fi
     fi
 
-    printf "%s\\n" "${_basename_var_name}"
+    printf "%s\\n" "${_basename__name}"
 }
 
 _num()
@@ -189,29 +189,29 @@ _printtime()
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
 
-    _printtime_var_num="${1}"
-    _printtime_var_min="0"
-    _printtime_var_hour="0"
-    _printtime_var_day="0"
-    if [ "${_printtime_var_num}" -gt "59" ]; then
-        _printtime_var_sec="$((${_printtime_var_num} % 60))"
-        _printtime_var_num="$((${_printtime_var_num} / 60))"
-        if [ "${_printtime_var_num}" -gt "59" ]; then
-            _printtime_var_min="$((${_printtime_var_num} % 60))"
-            _printtime_var_num="$((${_printtime_var_num} / 60))"
-            if [ "${_printtime_var_num}" -gt "23" ]; then
-                _printtime_var_hour="$((${_printtime_var_num} % 24))"
-                _printtime_var_day="$((${_printtime_var_num} / 24))"
+    _printtime__num="${1}"
+    _printtime__min="0"
+    _printtime__hour="0"
+    _printtime__day="0"
+    if [ "${_printtime__num}" -gt "59" ]; then
+        _printtime__sec="$((${_printtime__num} % 60))"
+        _printtime__num="$((${_printtime__num} / 60))"
+        if [ "${_printtime__num}" -gt "59" ]; then
+            _printtime__min="$((${_printtime__num} % 60))"
+            _printtime__num="$((${_printtime__num} / 60))"
+            if [ "${_printtime__num}" -gt "23" ]; then
+                _printtime__hour="$((${_printtime__num} % 24))"
+                _printtime__day="$((${_printtime__num} / 24))"
             else
-                _printtime_var_hour="${_printtime_var_num}"
+                _printtime__hour="${_printtime__num}"
             fi
         else
-            _printtime_var_min="${_printtime_var_num}"
+            _printtime__min="${_printtime__num}"
         fi
     else
-        _printtime_var_sec="${_printtime_var_num}"
+        _printtime__sec="${_printtime__num}"
     fi
-    printf "%s\\n" "${_printtime_var_hour}:${_printtime_var_min}:${_printtime_var_sec}"
+    printf "%s\\n" "${_printtime__hour}:${_printtime__min}:${_printtime__sec}"
 }
 
 if ! command -v "dmenu" >/dev/null 2>&1; then
@@ -234,15 +234,15 @@ if ! printf "%s" "${time}" | grep : >/dev/null; then
 fi
 
 time_copy="${time}"
-_var_i="0"
+__i="0"
 
 while [ "${time_copy}" ]; do
     time_option="${time_copy%%:*}"
-    _var_i="$((${_var_i} + 1))"
+    __i="$((${__i} + 1))"
     [ X"${time_option}" = X"${time_copy}" ] && time_copy='' || time_copy="${time_copy#*:}"
 done
 
-if [ "${_var_i}" -lt "2" ] || [ "${_var_i}" -gt "3" ]; then
+if [ "${__i}" -lt "2" ] || [ "${__i}" -gt "3" ]; then
     _invalidformat
 fi
 

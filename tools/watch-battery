@@ -11,20 +11,20 @@ PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
 _basename()
 {
-    [ -z "${1}" ] && return 1 || _basename_var_name="${1}"
-    [ -z "${2}" ] || _basename_var_suffix="${2}"
-    case "${_basename_var_name}" in
-        /*|*/*) _basename_var_name="$(expr "${_basename_var_name}" : '.*/\([^/]*\)')" ;;
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="$(expr "${_basename__name}" : '.*/\([^/]*\)')" ;;
     esac
 
-    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_name}" -gt "${#2}" ]; then
-        if [ X"$(printf "%s" "${_basename_var_name}" | cut -c"$((${#_basename_var_name} - ${#_basename_var_suffix} + 1))"-"${#_basename_var_name}")" \
-           = X"$(printf "%s" "${_basename_var_suffix}")" ]; then
-            _basename_var_name="$(printf "%s" "${_basename_var_name}" | cut -c1-"$((${#_basename_var_name} - ${#_basename_var_suffix}))")"
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
+           = X"$(printf "%s" "${_basename__suffix}")" ]; then
+            _basename__name="$(printf "%s" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
         fi
     fi
 
-    printf "%s\\n" "${_basename_var_name}"
+    printf "%s\\n" "${_basename__name}"
 }
 
 _usage()
@@ -42,31 +42,31 @@ _notify()
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if [ X"${LOGNAME}" = X"root" ]; then
             #hack to allow notifications from cronjobs
-            _notify_var_pid=$(pgrep dbus-launch|head -1)
-            _notify_var_user=$(grep -z USER /proc/"${_notify_var_pid}"/environ | sed 's/USER=//')
-            _notify_var_dbus="$(awk \
+            _notify__pid=$(pgrep dbus-launch|head -1)
+            _notify__user=$(grep -z USER /proc/"${_notify__pid}"/environ | sed 's/USER=//')
+            _notify__dbus="$(awk \
                 '/^DBUS_SESSION_BUS_ADDRESS/ {sub(/DBUS_SESSION_BUS_ADDRESS=/,""); print $0; exit}' \
-                /home/"${_notify_var_user}"/.dbus/session-bus/$(dbus-uuidgen --get)-*)"
-            _notify_var_display=$(grep -z DISPLAY /proc/"${_notify_var_pid}"/environ | sed 's/DISPLAY=//')
+                /home/"${_notify__user}"/.dbus/session-bus/$(dbus-uuidgen --get)-*)"
+            _notify__display=$(grep -z DISPLAY /proc/"${_notify__pid}"/environ | sed 's/DISPLAY=//')
 
-            if ! sudo -u "${_notify_var_user}" sh -c \
-                "DBUS_SESSION_BUS_ADDRESS=\"${_notify_var_dbus}\" DISPLAY=\"${_notify_var_display}\" notify-send -t 1000 \"${1}\"  \"${2}\""; then
+            if ! sudo -u "${_notify__user}" sh -c \
+                "DBUS_SESSION_BUS_ADDRESS=\"${_notify__dbus}\" DISPLAY=\"${_notify__display}\" notify-send -t 1000 \"${1}\"  \"${2}\""; then
                 if command -v "gxmessage" 2>/dev/null; then
-                    _notify_var_font="Monaco 9"
-                    gxmessage "${_notify_var_font:+-fn "$_notify_var_font"}" "${1} ${2}" "ok"
+                    _notify__font="Monaco 9"
+                    gxmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
                 else
-                    _notify_var_font="fixed"
-                    xmessage "${_notify_var_font:+-fn "$_notify_var_font"}" "${1} ${2}" "ok"
+                    _notify__font="fixed"
+                    xmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
                 fi
             fi
         else
             if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
                 if command -v "gxmessage" 2>/dev/null; then
-                    _notify_var_font="Monaco 9"
-                    gxmessage "${_notify_var_font:+-fn "$_notify_var_font"}" "${1} ${2}" "ok"
+                    _notify__font="Monaco 9"
+                    gxmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
                 else
-                    _notify_var_font="fixed"
-                    xmessage "${_notify_var_font:+-fn "$_notify_var_font"}" "${1} ${2}" "ok"
+                    _notify__font="fixed"
+                    xmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
                 fi
             fi
         fi
@@ -84,14 +84,14 @@ _valid_batt_values()
     if [ -z "${1}" ]; then
         return 1
     else
-        _vbv_var_result="$(printf "%s" "${1}" | awk '{ gsub(/^[ \t]+|[ \t]+$/, ""); print }')"
-        while [ "${_vbv_var_result}" ]; do
-            _vbv_var_option="${_vbv_var_result%%,*}"
-            if ! printf "%s" "${_vbv_var_option}" | grep -v "[^0-9]" >/dev/null; then
+        _vbv__result="$(printf "%s" "${1}" | awk '{ gsub(/^[ \t]+|[ \t]+$/, ""); print }')"
+        while [ "${_vbv__result}" ]; do
+            _vbv__option="${_vbv__result%%,*}"
+            if ! printf "%s" "${_vbv__option}" | grep -v "[^0-9]" >/dev/null; then
                 return 1
             fi
-            [ X"${_vbv_var_result}" = X"${_vbv_var_option}" ] && _vbv_var_result='' \
-                || _vbv_var_result="${_vbv_var_result#*,}"
+            [ X"${_vbv__result}" = X"${_vbv__option}" ] && _vbv__result='' \
+                || _vbv__result="${_vbv__result#*,}"
         done
         printf "%s" "${1}"
     fi
@@ -101,9 +101,9 @@ _sort_batt_values()
 { if [ -z "${1}" ]; then
         return 1
     else
-        _sbv_var_result="$(printf "%s" "${1}" | awk '{ gsub(/^[ \t]+|[ \t]+$/, ""); print }')"
-        _sbv_var_result="$(printf "%s" "${_sbv_var_result}" | tr "," "\n" | sort -n |tr "\n" ",")"
-        printf "%s" "${_sbv_var_result%,}"
+        _sbv__result="$(printf "%s" "${1}" | awk '{ gsub(/^[ \t]+|[ \t]+$/, ""); print }')"
+        _sbv__result="$(printf "%s" "${_sbv__result}" | tr "," "\n" | sort -n |tr "\n" ",")"
+        printf "%s" "${_sbv__result%,}"
     fi
 }
 

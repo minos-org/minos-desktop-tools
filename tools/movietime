@@ -46,33 +46,33 @@ _usage()
     printf "\\n" >&2
 
     #display current values of power management and movietime.
-    _usage_var_running="$(pgrep -f "${susp_script}")"
-    _usage_var_dpms_status="$(xset -q  | awk '/DPMS is/ { printf $3 }')"
-    _usage_var_susp_status="$([ -n "${_usage_var_running}" ] && printf "%s\\n" "Disabled" || printf "%s\\n" "Desktop settings")"
-    _usage_var_standby_time="$(xset -q | awk '/^  Standby: / { printf $2/60 }')"
-    _usage_var_susp_time="$(xset -q    | awk '/^  Standby: / { printf $4/60 }')"
-    _usage_var_off_time="$(xset -q     | awk '/^  Standby: / { printf $6/60 }')"
-    _usage_var_blank_time="$(xset -q   | awk '/^  timeout: / { printf $2/60 }')"
+    _usage__running="$(pgrep -f "${susp_script}")"
+    _usage__dpms_status="$(xset -q  | awk '/DPMS is/ { printf $3 }')"
+    _usage__susp_status="$([ -n "${_usage__running}" ] && printf "%s\\n" "Disabled" || printf "%s\\n" "Desktop settings")"
+    _usage__standby_time="$(xset -q | awk '/^  Standby: / { printf $2/60 }')"
+    _usage__susp_time="$(xset -q    | awk '/^  Standby: / { printf $4/60 }')"
+    _usage__off_time="$(xset -q     | awk '/^  Standby: / { printf $6/60 }')"
+    _usage__blank_time="$(xset -q   | awk '/^  timeout: / { printf $2/60 }')"
     #resume time in hours
-    _usage_var_hours="$(printf "%s\\n" "scale=1;${resume_time}/60" | bc)"
+    _usage__hours="$(printf "%s\\n" "scale=1;${resume_time}/60" | bc)"
 
 
     #DPMS disabled information
     printf "%s\\n" "   ${txtbld}current settings ${txtrst}(in minutes, 0 = disabled):" >&2
-    if [ X"${_usage_var_dpms_status}" = X"Disabled" ]; then
-        printf "%s\\n" "   DPMS:         ${_usage_var_dpms_status}" >&2
-        printf "%s\\n" "   Suspend:      ${_usage_var_susp_status}" >&2
+    if [ X"${_usage__dpms_status}" = X"Disabled" ]; then
+        printf "%s\\n" "   DPMS:         ${_usage__dpms_status}" >&2
+        printf "%s\\n" "   Suspend:      ${_usage__susp_status}" >&2
     fi
 
     #DPMS enabled information
-    if [ X"${_usage_var_dpms_status}" = X"Enabled" ]; then
-        printf "%s\\n" "   DPMS:         ${_usage_var_dpms_status}" >&2
-        printf "%s\\n" "   DPMS times:   Blank: ${_usage_var_blank_time}; Standby: ${_usage_var_standby_time}; Suspend: ${_usage_var_susp_time}; Offtime: ${_usage_var_off_time}" >&2
-        printf "%s\\n" "   Suspend:      ${_usage_var_susp_status}" >&2
+    if [ X"${_usage__dpms_status}" = X"Enabled" ]; then
+        printf "%s\\n" "   DPMS:         ${_usage__dpms_status}" >&2
+        printf "%s\\n" "   DPMS times:   Blank: ${_usage__blank_time}; Standby: ${_usage__standby_time}; Suspend: ${_usage__susp_time}; Offtime: ${_usage__off_time}" >&2
+        printf "%s\\n" "   Suspend:      ${_usage__susp_status}" >&2
     fi
     printf "\\n" >&2
     printf "%s\\n" "   ${txtbld}${prog} settings${txtrst}:" >&2
-    printf "%s\\n" "   Resume after: ${_usage_var_hours} hours" >&2
+    printf "%s\\n" "   Resume after: ${_usage__hours} hours" >&2
     printf "\\n" >&2
     exit 1
 }
@@ -92,11 +92,11 @@ _suspend_script()
 _movietime()
 {
     #current DPMS times (in minutes)
-    _movietime_var_dmps_status="$(xset -q  | awk '/DPMS is/ { printf $3 }')" #enab. or disb.
-    _movietime_var_running="$(pgrep -f "${susp_script}")"
+    _movietime__dmps_status="$(xset -q  | awk '/DPMS is/ { printf $3 }')" #enab. or disb.
+    _movietime__running="$(pgrep -f "${susp_script}")"
 
     #toggle powersaving
-    if [ X"${_movietime_var_dmps_status}" = X"Enabled" ] && [ -z "${_movietime_var_running}" ]; then
+    if [ X"${_movietime__dmps_status}" = X"Enabled" ] && [ -z "${_movietime__running}" ]; then
         #disable blanking, screen power saving
         xset s off; xset -dpms
         #create script
@@ -106,9 +106,9 @@ _movietime()
         #run inhibit script
         "${susp_script}" > /dev/null 2>&1 &
         #run user defined script
-        _movietime_var_hook_script="$(minos-config movietime-hook 2>/dev/null)"
-        [ -z "${_movietime_var_hook_script}" ] && _movietime_var_hook_script="${HOME}/.movietime"
-        [ -x "${_movietime_var_hook_script}" ] && _movietime_var_output="$("${_movietime_var_hook_script}" start 2>&1 >/dev/null)"
+        _movietime__hook_script="$(minos-config movietime-hook 2>/dev/null)"
+        [ -z "${_movietime__hook_script}" ] && _movietime__hook_script="${HOME}/.movietime"
+        [ -x "${_movietime__hook_script}" ] && _movietime__output="$("${_movietime__hook_script}" start 2>&1 >/dev/null)"
         _notify "${prog}" "started"
     else
         #enable blanking, screen power saving
@@ -119,9 +119,9 @@ _movietime()
             rm -rf "${susp_script}"
         fi
         #kill user defined script
-        _movietime_var_hook_script="$(minos-config movietime-hook 2>/dev/null)"
-        [ -z "${_movietime_var_hook_script}" ] && _movietime_var_hook_script="${HOME}/.movietime"
-        [ -x "${_movietime_var_hook_script}" ] && _movietime_var_output="$("${_movietime_var_hook_script}" stop 2>&1 >/dev/null)"
+        _movietime__hook_script="$(minos-config movietime-hook 2>/dev/null)"
+        [ -z "${_movietime__hook_script}" ] && _movietime__hook_script="${HOME}/.movietime"
+        [ -x "${_movietime__hook_script}" ] && _movietime__output="$("${_movietime__hook_script}" stop 2>&1 >/dev/null)"
         _notify "${prog}" "stopped"
     fi
 }
