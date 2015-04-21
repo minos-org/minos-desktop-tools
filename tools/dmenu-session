@@ -28,7 +28,7 @@ _strlen()
 }
 
 _return_valid_color()
-{   #return white if input is an invalid color code
+{   #return 1 if input is an invalid color code
     [ -z "${1}" ] && { printf "%s" "ffffffff"; return; } || _return_valid_color__arg="${1}"
     _return_valid_color__arg="$(_str2lower "${_return_valid_color__arg}")"
     _return_valid_color__arg="$(printf "%s" "${_return_valid_color__arg}" | sed 's:#::g')"
@@ -53,20 +53,20 @@ _return_valid_color()
         *)
             case "$(_strlen "${_return_valid_color__arg}")" in
                 8)  _return_valid_color__arg="$(printf "%s" "${_return_valid_color__arg}"|awk '/^[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]$/')"
-                    [ -z "${_return_valid_color__arg}" ] && { printf "%s" "ffffffff"; return; }
+                    [ -z "${_return_valid_color__arg}" ] && return 1
                     printf "%s" "${_return_valid_color__arg}"
                     ;;
                 6)  _return_valid_color__arg="$(printf "%s" "${_return_valid_color__arg}"|awk '/^[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]$/')"
-                    [ -z "${_return_valid_color__arg}" ] && { printf "%s" "ffffffff"; return; }
+                    [ -z "${_return_valid_color__arg}" ] && return 1
                     _return_valid_color__arg="${_return_valid_color__arg}ff"
                     printf "%s" "${_return_valid_color__arg}"
                     ;;
                 3)  _return_valid_color__arg="$(printf "%s" "${_return_valid_color__arg}"|awk '/^[0-9a-f][0-9a-f][0-9a-f]$/')"
-                    [ -z "${_return_valid_color__arg}" ] && { printf "%s" "ffffffff"; return; }
+                    [ -z "${_return_valid_color__arg}" ] && return 1
                     _return_valid_color__arg="$(printf "%s" "${_return_valid_color__arg}"|cut -c1)$(printf "%s" "${_return_valid_color__arg}"|cut -c1)$(printf "%s" "${_return_valid_color__arg}"|cut -c2)$(printf "%s" "${_return_valid_color__arg}"|cut -c2)$(printf "%s" "${_return_valid_color__arg}"|cut -c3)$(printf "%s" "${_return_valid_color__arg}"|cut -c3)ff"
                     printf "%s" "${_return_valid_color__arg}"
                     ;;
-                *)  printf "%s" "ffffffff" ;;
+                *)  return 1 ;;
             esac
             ;;
     esac
@@ -75,32 +75,59 @@ _return_valid_color()
 _get_i3lock_params()
 {
     if [ -n "$(i3lock --bshlcolor 2>&1 | grep requires 2>&1)" ]; then
-        _get_i3lock_params__inside="$(minos-config lock-color-inside 2>/dev/null)"
-        [ -z "${_get_i3lock_params__inside}" ] && _get_i3lock_params__inside="ffffffff" || _get_i3lock_params__inside="$(_return_valid_color "${_get_i3lock_params__inside}")"
+        _get_i3lock_params__inside="$(minos-config -n -c ~/.minos/session-manager lock-color-inside 2>/dev/null)"
+        [ -z "${_get_i3lock_params__inside}" ] && _get_i3lock_params__inside="$(minos-config -n -c /etc/minos/session-manager lock-color-inside 2>/dev/null)"
+        [ -z "${_get_i3lock_params__inside}" ] && _get_i3lock_params__inside="$(minos-config lock-color-inside 2>/dev/null)"
+        [ -z "${_get_i3lock_params__inside}" ] || _get_i3lock_params__inside="$(_return_valid_color "${_get_i3lock_params__inside}")"
+        [ -z "${_get_i3lock_params__inside}" ] && _get_i3lock_params__inside="ffffffff"
 
-        _get_i3lock_params__inside_verification="$(minos-config lock-color-inside-verification 2>/dev/null)"
-        [ -z "${_get_i3lock_params__inside_verification}" ] && _get_i3lock_params__inside_verification="ffffffff" || _get_i3lock_params__inside_verification="$(_return_valid_color "${_get_i3lock_params__inside_verification}")"
+        _get_i3lock_params__inside_verification="$(minos-config -n -c ~/.minos/session-manager lock-color-inside-verification 2>/dev/null)"
+        [ -z "${_get_i3lock_params__inside_verification}" ] && _get_i3lock_params__inside_verification="$(minos-config -n -c /etc/minos/session-manager lock-color-inside-verification 2>/dev/null)"
+        [ -z "${_get_i3lock_params__inside_verification}" ] && _get_i3lock_params__inside_verification="$(minos-config lock-color-inside-verification 2>/dev/null)"
+        [ -z "${_get_i3lock_params__inside_verification}" ] || _get_i3lock_params__inside_verification="$(_return_valid_color "${_get_i3lock_params__inside_verification}")"
+        [ -z "${_get_i3lock_params__inside_verification}" ] && _get_i3lock_params__inside_verification="ffffffff"
 
-        _get_i3lock_params__inside_wrong="$(minos-config lock-color-inside-wrong 2>/dev/null)"
-        [ -z "${_get_i3lock_params__inside_wrong}" ] && _get_i3lock_params__inside_wrong="a52a2aff" || _get_i3lock_params__inside_wrong="$(_return_valid_color "${_get_i3lock_params__inside_wrong}")"
+        _get_i3lock_params__inside_wrong="$(minos-config -n -c ~/.minos/session-manager lock-color-inside-wrong 2>/dev/null)"
+        [ -z "${_get_i3lock_params__inside_wrong}" ] && _get_i3lock_params__inside_wrong="$(minos-config -n -c /etc/minos/session-manager lock-color-inside-wrong 2>/dev/null)"
+        [ -z "${_get_i3lock_params__inside_wrong}" ] && _get_i3lock_params__inside_wrong="$(minos-config lock-color-inside-wrong 2>/dev/null)"
+        [ -z "${_get_i3lock_params__inside_wrong}" ] || _get_i3lock_params__inside_wrong="$(_return_valid_color "${_get_i3lock_params__inside_wrong}")"
+        [ -z "${_get_i3lock_params__inside_wrong}" ] && _get_i3lock_params__inside_wrong="a52a2aff"
 
-        _get_i3lock_params__ring="$(minos-config lock-color-ring 2>/dev/null)"
-        [ -z "${_get_i3lock_params__ring}" ] && _get_i3lock_params__ring="000000ff" || _get_i3lock_params__ring="$(_return_valid_color "${_get_i3lock_params__ring}")"
+        _get_i3lock_params__ring="$(minos-config -n -c ~/.minos/session-manager lock-color-ring 2>/dev/null)"
+        [ -z "${_get_i3lock_params__ring}" ] && _get_i3lock_params__ring="$(minos-config -n -c /etc/minos/session-manager lock-color-ring 2>/dev/null)"
+        [ -z "${_get_i3lock_params__ring}" ] && _get_i3lock_params__ring="$(minos-config lock-color-ring  2>/dev/null)"
+        [ -z "${_get_i3lock_params__ring}" ] || _get_i3lock_params__ring="$(_return_valid_color "${_get_i3lock_params__ring}")"
+        [ -z "${_get_i3lock_params__ring}" ] && _get_i3lock_params__ring="000000ff"
 
-        _get_i3lock_params__ring_verification="$(minos-config lock-color-ring-verification 2>/dev/null)"
-        [ -z "${_get_i3lock_params__ring_verification}" ] && _get_i3lock_params__ring_verification="ffffffff" || _get_i3lock_params__ring_verification="$(_return_valid_color "${_get_i3lock_params__ring_verification}")"
+        _get_i3lock_params__ring_verification="$(minos-config -n -c ~/.minos/session-manager lock-color-ring-verification 2>/dev/null)"
+        [ -z "${_get_i3lock_params__ring_verification}" ] && _get_i3lock_params__ring_verification="$(minos-config -n -c /etc/minos/session-manager lock-color-ring-verification 2>/dev/null)"
+        [ -z "${_get_i3lock_params__ring_verification}" ] && _get_i3lock_params__ring_verification="$(minos-config lock-color-ring-verification  2>/dev/null)"
+        [ -z "${_get_i3lock_params__ring_verification}" ] || _get_i3lock_params__ring_verification="$(_return_valid_color "${_get_i3lock_params__ring_verification}")"
+        [ -z "${_get_i3lock_params__ring_verification}" ] && _get_i3lock_params__ring_verification="ffffffff"
 
-        _get_i3lock_params__ring_wrong="$(minos-config lock-color-ring-wrong 2>/dev/null)"
-        [ -z "${_get_i3lock_params__ring_wrong}" ] && _get_i3lock_params__ring_wrong="a52a2aff" || _get_i3lock_params__ring_wrong="$(_return_valid_color "${_get_i3lock_params__ring_wrong}")"
+        _get_i3lock_params__ring_wrong="$(minos-config -n -c ~/.minos/session-manager lock-color-ring-wrong 2>/dev/null)"
+        [ -z "${_get_i3lock_params__ring_wrong}" ] && _get_i3lock_params__ring_wrong="$(minos-config -n -c /etc/minos/session-manager lock-color-ring-wrong 2>/dev/null)"
+        [ -z "${_get_i3lock_params__ring_wrong}" ] && _get_i3lock_params__ring_wrong="$(minos-config lock-color-ring-wrong 2>/dev/null)"
+        [ -z "${_get_i3lock_params__ring_wrong}" ] || _get_i3lock_params__ring_wrong="$(_return_valid_color "${_get_i3lock_params__ring_wrong}")"
+        [ -z "${_get_i3lock_params__ring_wrong}" ] && _get_i3lock_params__ring_wrong="a52a2aff"
 
-        _get_i3lock_params__line="$(minos-config lock-color-line 2>/dev/null)"
-        [ -z "${_get_i3lock_params__line}" ] && _get_i3lock_params__line="00000000" || _get_i3lock_params__line="$(_return_valid_color "${_get_i3lock_params__line}")"
+        _get_i3lock_params__line="$(minos-config -n -c ~/.minos/session-manager lock-color-line 2>/dev/null)"
+        [ -z "${_get_i3lock_params__line}" ] && _get_i3lock_params__line="$(minos-config -n -c /etc/minos/session-manager lock-color-line 2>/dev/null)"
+        [ -z "${_get_i3lock_params__line}" ] && _get_i3lock_params__line="$(minos-config lock-color-line 2>/dev/null)"
+        [ -z "${_get_i3lock_params__line}" ] || _get_i3lock_params__line="$(_return_valid_color "${_get_i3lock_params__line}")"
+        [ -z "${_get_i3lock_params__line}" ] && _get_i3lock_params__line="00000000"
 
-        _get_i3lock_params__keypress="$(minos-config lock-color-keypress 2>/dev/null)"
-        [ -z "${_get_i3lock_params__keypress}" ] && _get_i3lock_params__keypress="1e90ffff" || _get_i3lock_params__keypress="$(_return_valid_color "${_get_i3lock_params__keypress}")"
+        _get_i3lock_params__keypress="$(minos-config -n -c ~/.minos/session-manager lock-color-keypress 2>/dev/null)"
+        [ -z "${_get_i3lock_params__keypress}" ] && _get_i3lock_params__keypress="$(minos-config -n -c /etc/minos/session-manager lock-color-keypress 2>/dev/null)"
+        [ -z "${_get_i3lock_params__keypress}" ] && _get_i3lock_params__keypress="$(minos-config lock-color-keypress 2>/dev/null)"
+        [ -z "${_get_i3lock_params__keypress}" ] || _get_i3lock_params__keypress="$(_return_valid_color "${_get_i3lock_params__keypress}")"
+        [ -z "${_get_i3lock_params__keypress}" ] && _get_i3lock_params__keypress="1e90ffff"
 
-        _get_i3lock_params__delpress="$(minos-config lock-color-delpress 2>/dev/null)"
-        [ -z "${_get_i3lock_params__delpress}" ] && _get_i3lock_params__delpress="a52a2aff" || _get_i3lock_params__delpress="$(_return_valid_color "${_get_i3lock_params__delpress}")"
+        _get_i3lock_params__delpress="$(minos-config -n -c ~/.minos/session-manager lock-color-delpress 2>/dev/null)"
+        [ -z "${_get_i3lock_params__delpress}" ] && _get_i3lock_params__delpress="$(minos-config -n -c /etc/minos/session-manager lock-color-delpress 2>/dev/null)"
+        [ -z "${_get_i3lock_params__delpress}" ] && _get_i3lock_params__delpress="$(minos-config lock-color-delpress 2>/dev/null)"
+        [ -z "${_get_i3lock_params__delpress}" ] || _get_i3lock_params__delpress="$(_return_valid_color "${_get_i3lock_params__delpress}")"
+        [ -z "${_get_i3lock_params__delpress}" ] && _get_i3lock_params__delpress="a52a2aff"
 
         i3lock_color_params="--insidecolor=${_get_i3lock_params__inside}|
                              --insidevercolor=${_get_i3lock_params__inside_verification}|
