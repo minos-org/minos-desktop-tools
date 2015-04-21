@@ -106,7 +106,7 @@ _movietime()
         #run inhibit script
         "${susp_script}" > /dev/null 2>&1 &
         #run user defined script
-        _movietime__hook_script="$(minos-config movietime-hook 2>/dev/null)"
+        _movietime__hook_script="$(minos-config m-movietime-config 2>/dev/null)"
         [ -z "${_movietime__hook_script}" ] && _movietime__hook_script="${HOME}/.movietime"
         [ -x "${_movietime__hook_script}" ] && _movietime__output="$("${_movietime__hook_script}" start 2>&1 >/dev/null)"
         _notify "${prog}" "started"
@@ -119,7 +119,7 @@ _movietime()
             rm -rf "${susp_script}"
         fi
         #kill user defined script
-        _movietime__hook_script="$(minos-config movietime-hook 2>/dev/null)"
+        _movietime__hook_script="$(minos-config m-movietime-config 2>/dev/null)"
         [ -z "${_movietime__hook_script}" ] && _movietime__hook_script="${HOME}/.movietime"
         [ -x "${_movietime__hook_script}" ] && _movietime__output="$("${_movietime__hook_script}" stop 2>&1 >/dev/null)"
         _notify "${prog}" "stopped"

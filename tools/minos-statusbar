@@ -42,7 +42,7 @@ fi
 
 [ X"$(minos-config statusbar 2>/dev/null)" = X"no" ] && return 0
 
-minos_statusbar="$(minos-config statusbar-config 2>/dev/null)"
+minos_statusbar="$(minos-config m-statusbar-config 2>/dev/null)"
 if [ -z "${minos_statusbar}" ]; then
     if [ -f "${HOME}"/.minos/statusbar ]; then
         minos_statusbar="${HOME}/.minos/statusbar"
@@ -55,7 +55,7 @@ if [ -z "${minos_statusbar}" ]; then
     printf "%s\\n" "minos-statusbar: couldn't find config file, exiting." >&2
     return 1
 else
-    minos_statusbar_icons="$(minos-config statusbar-icons 2>/dev/null)"
+    minos_statusbar_icons="$(minos-config m-statusbar-icons 2>/dev/null)"
     [ -z "${minos_statusbar_icons}" ] && minos_statusbar_icons="sm4tik"
     sed "s:sm4tik:${minos_statusbar_icons}:g" ${minos_statusbar} > /tmp/minos-statusbar
 
