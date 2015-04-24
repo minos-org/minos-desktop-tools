@@ -4,6 +4,8 @@ Integration minos tools: http://minos.io
 
 ## Quick start
 
+### On Ubuntu (only LTS releases)
+
 1. Set up the minos archive:
 
    ```
@@ -18,14 +20,6 @@ Integration minos tools: http://minos.io
 
 3. Enjoy ☺!
 
-## Uninstalling
-
-If by any reason you dislike these settings you can uninstall by running:
-
-   ```
-   $ sudo apt-get remove minos-tools
-   ```
-
 ## Feedback
 
-Please open [an issue](https://github.com/minos-org/minos-tools/issues) with your comments.
+Please drop me an [email](mailto:j@minos.io) with your suggestions or open [an issue](https://github.com/minos-org/minos-tools/issues) with your comments.
