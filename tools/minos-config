@@ -28,21 +28,23 @@ _get_minos_config()
 {
     [ -z "${1}" ] && return 1
     if [ -z "${config_file}" ]; then
-        _gmc__option="$(awk -v pattern="^${1} "           \
+        _gmc__option="$(awk -v pattern="^${1} "              \
             '$0 ~ pattern {$1=""; print substr($0,2); exit}' \
             "${HOME}"/.minos/config 2>/dev/null)"
     else
-        _gmc__option="$(awk -v pattern="^${1} "           \
+        _gmc__option="$(awk -v pattern="^${1} "              \
             '$0 ~ pattern {$1=""; print substr($0,2); exit}' \
             "${config_file}" 2>/dev/null)"
     fi
-    [ -z "${_gmc__option}" ] &&                           \
-        _gmc__option="$(awk -v pattern="^${1} "           \
+    [ -z "${_gmc__option}" ] &&                              \
+        _gmc__option="$(awk -v pattern="^${1} "              \
             '$0 ~ pattern {$1=""; print substr($0,2); exit}' \
             /etc/minos/config 2>/dev/null)"
-    [ -z "${_gmc__option}" ] && return 1 ||               \
-        { eval "_gmc__option=\"${_gmc__option}\"";     \
-          printf "%s\\n" "${_gmc__option}"; }
+
+    #NOTE: manually expanding tilde or `$HOME` variable. Avoids using
+    #`eval` as described here http://stackoverflow.com/a/5748307/777337
+    [ -z "${_gmc__option}" ] && return 1 || printf "%s\\n" "${_gmc__option}" | \
+            sed "s:\$HOME:$HOME:g;s:~/:$HOME/:;s:\"::g;s:\'::g;"
 }
 
 _dump_minos_config()
