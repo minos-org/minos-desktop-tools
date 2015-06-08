@@ -1,0 +1,33 @@
+#!/bin/sh
+#description: dmenu-i3-window-jumper is a window selector for i3-wm
+#usage: dmenu-i3-window-jumper is best suited to be launched from a shortcut (tab)
+
+#example: dmenu-i3-window-jumper
+#a gui menu appears asking which windows jump to
+
+#for optimal look requires a dmenu version with xft support: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+DMENU="dmenu -p > -l 20 -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #c0c0c0 -sf #000000"
+#DMENU_OPTS="-fn "Source\Code\Pro-12"     -nb #000000 -nf #a0a0a0 -sb #0c73c2 -sf #ffffff -l 18 -p $(basename $0)"
+
+if ! command -v "dmenu" >/dev/null 2>&1; then
+    printf "%s\\n" "you need to install 'dmenu' to run this program" >&2
+    exit 1
+fi
+
+# Present a menu with all windows
+#TITLE="$(i3-msg -t get_tree | python -mjson.tool | sed -n -e 's/^ \{35\}[ ]\+\"name\": \"\(.*\)\", $/\1/p' | sed '/^#[a-F0-9]\{6\}$/d' | ${DMENU})"
+TITLE="$(i3-msg -t get_tree | egrep -o "(class.:.[a-Z]+.|title.:.[()0123456789~. -/a-Z]+)" | \
+sed 's/"//g;s/class://g;s/title://g' | while read -r line; read -r line2; do printf "%s\\n" "═ $line :: $line2"; done | sed '/i3bar for/d' | ${DMENU})"
+
+if [ -z "${TITLE}" ]; then
+    exit 1
+else
+    # Escape some characters to prevent i3 to interpret them as a pattern
+    # "(" and ")" replace them with "\(" and "\)"
+    #TITLE="$(printf "%s\\n" "${TITLE}" | sed 's/\([()]\)/\\\1/g')"
+    TITLE="$(printf "%s\\n" "${TITLE}" | egrep -o "::.*" | sed 's/:: //g;s/\([()]\)/\\\1/g')"
+
+    # Focus window
+    i3-msg "[title=\"${TITLE}\"] focus"
+fi
+
