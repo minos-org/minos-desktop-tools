@@ -1,10 +1,11 @@
 #!/bin/sh
 #minos-meta: launch default apps in minos http://minos.io/doc/config#default_apps
-#       this is a multi-call program, similar to busybox in the way it's executed
-#usage: minos-meta m-app options || m-app options
+#            this is a multi-call program, similar to busybox in the way it's executed
+#usage: minos-meta m-app options #or
+#usage: m-app options
 
 #example: minos-meta m-file-manager
-#the default m-file-manager is launched
+#the defined m-file-manager is launched (~/.minos/config)
 _usage()
 {
     printf "%s\\n" "Usage: minos-meta m-app [arguments]..." >&2
