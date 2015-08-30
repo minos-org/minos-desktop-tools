@@ -5256,6 +5256,17 @@ _basename()
     printf "%s\\n" "${_basename__name}"
 }
 
+_usage()
+{
+    printf "%s\\n" "Usage: $(_basename "${0}") [option] [countdown time]" >&2
+    printf "%s\\n" "Dmenu countdown alert for tiling windows managers." >&2
+    printf "%s\\n" >&2
+    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
+    printf "%s\\n" "  -p, --player use specified player, eg. mplayer" >&2
+    printf "%s\\n" "  -t, --tune   use specified tune,   eg. /tune.flac" >&2
+    exit 1
+}
+
 _decode64()
 {   #decode a base64 string, portable version
     [ ! -t 0 ] && set -- "${@}" "$(cat)"
@@ -5394,12 +5405,24 @@ _wakeup_at()
     printf "%s" "${1}" | ${_sudo} tee /sys/class/rtc/rtc0/wakealarm >/dev/null
 }
 
-_play_tune() { "${tune}" | aplay >/dev/null 2>&1 & }
+_play_tune()
+{
+    if [ "${player}" ]; then
+        "${player}" "${tune_song}" >/dev/null 2>&1 &
+    else
+        "${tune}" | aplay >/dev/null 2>&1 &
+    fi
+}
 
 _stop_tune()
 {
-    killall aplay >/dev/null 2>&1
-    killall dmenu-countdown.tone >/dev/null 2>&1
+    if [ "${player}" ]; then
+        killall "${player}" >/dev/null 2>&1
+    else
+        killall aplay >/dev/null 2>&1
+        killall dmenu-countdown.tone >/dev/null 2>&1
+    fi
+
     rm -rf "${HOME}"/.dmenu_countdown
     rm -rf "${tune}"
 }
@@ -5407,6 +5430,47 @@ _stop_tune()
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- "${@}" $(cat)
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+               '') exit 1 ;;
+        -h|--help) _usage ;;
+        '-p'|'--player')
+                if [ "${#}" -gt "1" ]; then
+                    case "${2}" in
+                        -*) printf "%s\\n" "Option '${arg}' requires a parameter"; _usage ;;
+                    esac
+                    shift; player="${1}"; [ "${1}" ] && shift
+                else
+                    printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+                fi ;;
+         -p*) player="${1#-p}"; shift ;;
+         --player*) player="${1#--player}"; shift ;;
+        '-t'|'--tune')
+                if [ "${#}" -gt "1" ]; then
+                    case "${2}" in
+                        -*) printf "%s\\n" "Option '${arg}' requires a parameter"; _usage ;;
+                    esac
+                    shift; tune_song="${1}"; [ "${1}" ] && shift
+                    [ -f "${tune_song}" ] || { \
+                        _notify "Warning" "File '${tune_song}' doesn't exist, using built-in tone..."
+                        player=""; tune_song=""; }
+                else
+                    printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+                fi ;;
+         -t*) tune_song="${1#-t}"; shift ;;
+         --tune*) tune_song="${1#--tune}"; shift ;;
+              s*) rm -f /tmp/dmenu-countdown.lock; exit ;;
+    esac
+done
+
+if [ -n "${player}" ] && [ -z "${tune_song}" ]; then
+    _notify "Warning" "Option '--player' requires to specify --tune, falling back to built-in tune..."
+    player=""
+elif [ -n "${tune_song}" ] && [ -z "${player}" ]; then
+    _notify "Warning" "Option '--tune' requires to specify --player, falling back to built-in tune..."
+    player=""
 fi
 
 if [ -z "${1}" ]; then
@@ -5419,12 +5483,6 @@ else
     time="${1}"
 fi
 
-[ -z "${time}" ] && exit 1
-
-case "${time}" in
-    s*) rm -f /tmp/dmenu-countdown.lock; exit ;;
-esac
-
 if command -v "sudo" >/dev/null 2>&1; then
     _sudo="sudo -n"
 fi
@@ -5432,9 +5490,12 @@ fi
 [ X"${LOGNAME}" = X"root" ] && _sudo=""
 
 #start validation
-if ! printf "%s" "${time}" | grep : >/dev/null; then
-    _die_invalid_format
-fi
+case "${time}" in
+    s*) rm -r /tmp/dmenu-countdown.lock; exit ;;
+    *:*) : ;;
+    '') exit ;;
+    *) _die_invalid_format ;;
+esac
 
 time__copy="${time}"; __i="0"; while [ "${time__copy}" ]; do
     time__option="${time__copy%%:*}"
@@ -5447,7 +5508,7 @@ if [ "${__i}" -lt "2" ] || [ "${__i}" -gt "3" ]; then
     _die_invalid_format
 fi
 
-hours="$(printf "%s" "${time}" | cut -d: -f1)"
+hours="$(printf "%s"   "${time}" | cut -d: -f1)"
 minutes="$(printf "%s" "${time}" | cut -d: -f2)"
 seconds="$(printf "%s" "${time}" | cut -d: -f3)"
 
@@ -5493,7 +5554,7 @@ almost_since_1970="$(date  '+%s' -d "+ $(($seconds - $almost)) seconds")"
 _notify "Countdown" "time left: $(_print_time "${seconds}")"
 current_time_in_seconds_since_1970="$(date '+%s')"
 
-#create auto wake up in case the systems gets suspend/hibernate in between
+#create auto wake up in case the systems gets suspended/hibernated in between
 #wake up 180 seconds (3 minutes) before the alarm triggers
 wakeup_seconds="$((seconds_since_1970 - 180))"
 _wakeup_at "${wakeup_seconds}"
@@ -5507,7 +5568,7 @@ __i="0"; while [ "${seconds_since_1970}" -gt "${current_time_in_seconds_since_19
     fi
 
     #reschedule wakeup (time 60 seconds in the feature) if it gets too close to the
-    #alarm time so the system has enough time to hibernate if that's the case
+    #alarm time so the system has time to hibernate if that's the case
     if [ "$(($wakeup_seconds - $current_time_in_seconds_since_1970))" -lt "60" ]; then
         wakeup_seconds="$(($current_time_in_seconds_since_1970 + 60))"
         _wakeup_at "${wakeup_seconds}"
