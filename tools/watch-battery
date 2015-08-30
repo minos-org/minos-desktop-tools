@@ -1,10 +1,10 @@
 #!/bin/sh
 #description: display a warning when the system is running out of energy
-#             and suspend|hibernate the system if no action is taken
+#             suspend|hibernate if no manual action is taken
 #usage: watch-battery
 
-#it makes more sense to run it as a cron job
-#cronjob (every 3 min)
+#it indend to be used as a cron job
+#eg, (every 3 min)
 #*/3 * * * * /path/to/this/script
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
@@ -30,7 +30,7 @@ _basename()
 _usage()
 {
     printf "%s\\n" "Usage: $(_basename "${0}")" >&2
-    printf "%s\\n" "This program should be run as a cron job, e.g.: */3 * * * * $(_basename "${0}")" >&2
+    printf "%s\\n" "This program should be run as a cron job, eg.: */3 * * * * $(_basename "${0}")" >&2
     exit 1
 }
 
@@ -132,7 +132,7 @@ if ! flock -n 9 ; then
 fi
 
 if [ ! -f "$(command -v notify-send)" ] || [ ! -f "$(command -v pm-hibernate)" ] || [ ! -f "$(command -v acpi)" ]; then
-    _notify  "Error" "you need to install acpi, notify-send and pm-utils to run this program"
+    _notify  "Error" "you need to install 'acpi', 'notify-send' and 'pm-utils' to run this program"
     exit 1
 fi
 
@@ -155,7 +155,6 @@ else
     _sudo="sudo"
 fi
 
-# If Discharging...
 if [ X"${stat}" = X"Discharging" ]; then
     batt_values_buf="${batt_at}"; i="0"
     while [ "${batt_values_buf}" ]; do

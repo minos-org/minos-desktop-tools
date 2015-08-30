@@ -1,12 +1,12 @@
 #!/bin/sh
 #description: dmenu for mpd
-#usage: dmenu-mpd is best suited to be launched from a shortcut
+#usage: dmenu-mpd is best suited for launching from a shortcut
 
 #example: dmenu-mpd
 #a gui menu appears asking for which song to play
 
-#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
-#-sf yellow
+#looks better with a xft powered dmenu:
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #cfd000'
 
 _die()

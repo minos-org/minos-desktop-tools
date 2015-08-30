@@ -1,5 +1,5 @@
 #!/bin/sh
-#description: show welcome information in minos
+#description: show minos welcome information
 #usage: minos-welcome
 
 [ -f "${HOME}"/.minos/welcomed ] && exit
@@ -11,14 +11,6 @@ _usage()
     printf "\\n" >&2
     printf "%s\\n" "  -h, --help   show this help message and exit" >&2
     exit 1
-}
-
-_whereis()
-{
-    [ -z "${1}" ] && return 1
-    if ! command -v "${1}" 2>/dev/null; then
-        return 1
-    fi
 }
 
 _notify()
@@ -51,8 +43,8 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift;   break  ;;
-        -h|--help)   _usage ;;
+        --) shift; break  ;;
+        -h|--help) _usage ;;
         -*) printf "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'\\n" >&2; _usage ;;
     esac
 done

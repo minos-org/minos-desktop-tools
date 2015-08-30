@@ -1,11 +1,13 @@
 #!/bin/sh
-#description: minos statusbar, requires, i3-wm with xbc icon patch and conky
+#description: pretty i3 bar, requires conky
 #usage: use only as argument in status_command (~/.i3/config)
+
+ #minos statusbar looks better with the xbc icon patch
 
 _usage()
 {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]" >&2
-    printf "%s\\n" "WARNING, use this program only as an argument to status_command in i3 (~/.i3/config)" >&2
+    printf "%s\\n" "WARNING, Only use this program as an argument to status_command in i3 (~/.i3/config)" >&2
     printf "\\n" >&2
     printf "%s\\n" "  -h, --help   show this help message and exit" >&2
     exit 1

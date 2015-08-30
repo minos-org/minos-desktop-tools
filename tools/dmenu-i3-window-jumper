@@ -5,7 +5,8 @@
 #example: dmenu-i3-window-jumper
 #a gui menu appears asking which windows jump to
 
-#for optimal look requires a dmenu version with xft support: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+#looks better with a xft powered dmenu:
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 DMENU="dmenu -p > -l 20 -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #c0c0c0 -sf #000000"
 #DMENU_OPTS="-fn "Source\Code\Pro-12"     -nb #000000 -nf #a0a0a0 -sb #0c73c2 -sf #ffffff -l 18 -p $(basename $0)"
 

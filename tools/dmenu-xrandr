@@ -1,12 +1,12 @@
 #!/bin/sh
 #description: dmenu based multimonitor menu
-#usage: dmenu-xrandr is best suited to be launched from a shortcut
+#usage: dmenu-xrandr is best suited for launching from a shortcut
 
 #example: dmenu-xrandr
 #a gui menu appears asking for which resolution to apply
 
-#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
-
+#looks better with a xft powered dmenu:
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 
 _die()

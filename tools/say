@@ -1,9 +1,9 @@
 #!/bin/sh
-#description: say phrase
+#description: say phrase, requires internet, uses google voice
 #usage: say [options] phrase
 
 #example: say -en "hello world"
-#no-output, only audio
+#audio plays saying "hello world"
 
 _notify()
 {
@@ -64,8 +64,8 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift; break       ;;
-        -h|--help) _usage      ;;
+        --) shift; break  ;;
+        -h|--help) _usage ;;
         -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
     esac
 done

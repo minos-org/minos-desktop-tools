@@ -51,7 +51,7 @@ _screenshot()
         _screenshot__bin="import"
         [ -n "${flag_select}" ] && _screenshot__opt=""   || _screenshot__opt="-window root"
     else
-        _notify "Error" "install either scrot, gnome-screenshot or imagemagick to run this program"
+        _notify "Error" "install either 'scrot', 'gnome-screenshot' or 'imagemagick' to run this program"
         exit 1
     fi
 
