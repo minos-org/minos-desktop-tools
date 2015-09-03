@@ -5401,8 +5401,12 @@ _print_time()
 _wakeup_at()
 {
     [ -z "${1}" ] && return 1
-    printf "0" | ${_sudo} tee /sys/class/rtc/rtc0/wakealarm >/dev/null
-    printf "%s" "${1}" | ${_sudo} tee /sys/class/rtc/rtc0/wakealarm >/dev/null
+    if command -v "rtcwake" >/dev/null 2>&1; then
+        ${_sudo} rtcwake -m disable >/dev/null
+        [ "${1}" -gt "0" ] && ${_sudo} rtcwake -m no -t "${1}" >/dev/null
+    else
+        return 1
+    fi
 }
 
 _play_tune()
@@ -5423,8 +5427,7 @@ _stop_tune()
         killall dmenu-countdown.tone >/dev/null 2>&1
     fi
 
-    rm -rf "${HOME}"/.dmenu_countdown
-    rm -rf "${tune}"
+    rm -rf "${HOME}"/.dmenu_countdown; rm -rf "${tune}"
 }
 
 if [ ! -t 0 ]; then
@@ -5564,11 +5567,12 @@ __i="0"; while [ "${seconds_since_1970}" -gt "${current_time_in_seconds_since_19
         _notify "Cancel" "countdown canceled!"
         #cancel auto wakeup
         _wakeup_at "0"
+        rm -rf "${HOME}"/.dmenu_countdown; rm -rf "${tune}"
         exit
     fi
 
-    #reschedule wakeup (time 60 seconds in the feature) if it gets too close to the
-    #alarm time so the system has time to hibernate if that's the case
+    #reschedule wakeup (60 seconds in the feature) if it gets too close to the
+    #alarm time so the system has enough time to hibernate if that's the case
     if [ "$(($wakeup_seconds - $current_time_in_seconds_since_1970))" -lt "60" ]; then
         wakeup_seconds="$(($current_time_in_seconds_since_1970 + 60))"
         _wakeup_at "${wakeup_seconds}"
