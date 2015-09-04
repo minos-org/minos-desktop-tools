@@ -115,8 +115,8 @@ for arg in "${@}"; do #parse options
     esac
 done
 
-[ X"${LOGNAME}" = X"root" ] && user=$(grep 1000 /etc/group | cut -d: -f1) || user="${LOGNAME}"
-bin="$(HOME=/home/$user minos-config m-battery 2>/dev/null)"
+[ X"${LOGNAME}" = X"root" ] && user="$(grep 1000 /etc/group | cut -d: -f1)" || user="${LOGNAME}"
+bin="$(HOME=/home/"${user}" minos-config m-battery 2>/dev/null)"
 case "${bin}" in
       no|NO|No|nO) return        ;;
     watch-battery) :             ;;
@@ -142,9 +142,10 @@ stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
 #battery percentage
 batt_current="$(acpi -b |awk '{if ($0 ~ "%,") sub("%,", ""); else sub("%", ""); print $4}')"
 batt_last_seen="$(cat /tmp/"${progname}" 2>/dev/null)"
-action="$(HOME=/home/$user minos-config m-hibernate 2>/dev/null)"
+action="$(HOME=/home/"${user}" minos-config m-hibernate 2>/dev/null)"
 [ -z "${action}" ] && action="$(command -v pm-hibernate)"
-batt_at="$(HOME=/home/$user minos-config watch-battery-config 2>/dev/null)"
+batt_at="$(HOME=/home/"${user}" minos-config watch-battery-config 2>/dev/null)"
+[ -z "$(_valid_batt_values "${batt_at}")" ] && batt_at="$(HOME=/home/"${user}" minos-config m-battery-config 2>/dev/null)"
 [ -z "$(_valid_batt_values "${batt_at}")" ] && batt_at="15,10,7,5"
 batt_at="$(_sort_batt_values "${batt_at}")"
 #=============
