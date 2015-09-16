@@ -45,14 +45,16 @@ _say()
     while [ "${#_say__phrase}" -gt "99" ]; do
         #TODO 29-06-2014 05:47 >> separate by word
         _say__tmp="$(printf "%b" "${_say__phrase}" | cut -c1-99 | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
-        mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=${sl}&q=${_say__tmp}" > /dev/null 2>&1
+        #http://stackoverflow.com/a/31835942/890858
+        mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&total=1&idx=0&client=t&tl=${sl}&q=${_say__tmp}" > /dev/null 2>&1
         _say__phrase="$(printf "%b" "${_say__phrase}" | cut -c100-"$((${#_say__phrase} + 1))")"
         #http://stackoverflow.com/questions/4988155/is-there-a-bash-command-that-can-tell-the-size-of-a-shell-variable
     done
 
     #http://stackoverflow.com/questions/296536/urlencode-from-a-bash-script
+    #http://stackoverflow.com/a/31835942/890858
     _say__phrase="$(printf "%b" "${_say__phrase}" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
-    mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=${sl}&q=${_say__phrase}" > /dev/null 2>&1
+    mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&total=1&idx=0&client=t&tl=${sl}&q=${_say__phrase}" > /dev/null 2>&1
 }
 
 if [ ! -t 0 ]; then
