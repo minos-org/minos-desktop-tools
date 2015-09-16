@@ -1,8 +1,8 @@
 #!/bin/sh
-#description: say phrase, requires internet, uses google voice
-#usage: say [options] phrase
+#description: txt2speech, requires internet, uses google voice
+#usage: txt2speech [options] phrase
 
-#example: say -en "hello world"
+#example: txt2speech -en "hello world"
 #audio plays saying "hello world"
 
 _notify()
@@ -31,30 +31,30 @@ _notify()
 _usage()
 {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl] phrase" >&2
-    printf "%s\\n" "Say a phrase." >&2
+    printf "%s\\n" "txt2speech." >&2
     printf "\\n" >&2
     printf "%s\\n" "  sl   source language ('en' by default)" >&2
     exit 1
 }
 
-_say()
+_txt2speech()
 {
     [ -z "${1}" ] && return 1
-    _say__phrase="${*}"
+    _txt2speech__phrase="${*}"
 
-    while [ "${#_say__phrase}" -gt "99" ]; do
+    while [ "${#_txt2speech__phrase}" -gt "99" ]; do
         #TODO 29-06-2014 05:47 >> separate by word
-        _say__tmp="$(printf "%b" "${_say__phrase}" | cut -c1-99 | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
+        _txt2speech__tmp="$(printf "%b" "${_txt2speech__phrase}" | cut -c1-99 | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
         #http://stackoverflow.com/a/31835942/890858
-        mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&total=1&idx=0&client=t&tl=${sl}&q=${_say__tmp}" > /dev/null 2>&1
-        _say__phrase="$(printf "%b" "${_say__phrase}" | cut -c100-"$((${#_say__phrase} + 1))")"
+        mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&total=1&idx=0&client=t&tl=${sl}&q=${_txt2speech__tmp}" > /dev/null 2>&1
+        _txt2speech__phrase="$(printf "%b" "${_txt2speech__phrase}" | cut -c100-"$((${#_txt2speech__phrase} + 1))")"
         #http://stackoverflow.com/questions/4988155/is-there-a-bash-command-that-can-tell-the-size-of-a-shell-variable
     done
 
     #http://stackoverflow.com/questions/296536/urlencode-from-a-bash-script
     #http://stackoverflow.com/a/31835942/890858
-    _say__phrase="$(printf "%b" "${_say__phrase}" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
-    mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&total=1&idx=0&client=t&tl=${sl}&q=${_say__phrase}" > /dev/null 2>&1
+    _txt2speech__phrase="$(printf "%b" "${_txt2speech__phrase}" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
+    mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&total=1&idx=0&client=t&tl=${sl}&q=${_txt2speech__phrase}" > /dev/null 2>&1
 }
 
 if [ ! -t 0 ]; then
@@ -81,4 +81,4 @@ case "${1}" in
     *)  sl="en"; ;;
 esac
 
-_say "${@}"
+_txt2speech "${@}"
