@@ -1,14 +1,14 @@
 #!/bin/sh
-#description: control music apps, currently mpd,mplayer,mpv
-#usage: multimedia-control [play|pause|toggle|next|previous]
+#description: control player apps, currently mpd,mplayer,mpv
+#usage: player-ctrl [play|pause|toggle|next|previous]
 
-#example: multimedia-control next
+#example: player-ctrl next
 #play next song in queue
 
 _usage()
 {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') play|pause|toggle|next|previous" >&2
-    printf "%s\\n" "Control music applications." >&2
+    printf "%s\\n" "Control player apps." >&2
     exit 1
 }
 
