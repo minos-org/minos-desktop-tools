@@ -283,11 +283,11 @@ case "${choice}" in
   shutdown) _shutdown  ;;
    suspend) _lock &
             #mplayer acts weird when the system gets back from sleep
-            multimedia-control pause >/dev/null 2>&1 || killall mplayer
+            player-ctrl pause >/dev/null 2>&1 || killall mplayer
             _suspend   ;;
  hibernate) _lock &
             #mplayer acts weird when the system gets back from sleep
-            multimedia-control pause >/dev/null 2>&1 || killall mplayer
+            player-ctrl pause >/dev/null 2>&1 || killall mplayer
             _hibernate ;;
          *) exit 1     ;;
 esac

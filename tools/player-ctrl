@@ -22,11 +22,16 @@ _die()
 _mplayer()
 {
     [ -z "${1}" ] && return 1
-    [ ! -p /tmp/mplayer.fifo ] && return 1
+    _mplayer__fifo="$(cat etc/mplayer/mplayer.conf ~/.mplayer/config 2>/dev/null | \
+        awk '/^input=file=/ {sub(/^input=file=/, ""); print}' | tail -1)"
+
+    [ -n "${_mplayer__fifo}" ] && [ ! -e "${_mplayer__fifo}" ] && mkfifo "${_mplayer__fifo}"
+
+    [ ! -p "${_mplayer__fifo}" ] && return 1
     case "${1}" in
-        play|pause|toggle) printf "%s\\n" "pause"      > /tmp/mplayer.fifo ;;
-        next)              printf "%s\\n" "pt_step 1"  > /tmp/mplayer.fifo ;;
-        previous)          printf "%s\\n" "pt_step -1" > /tmp/mplayer.fifo ;;
+        play|pause|toggle) printf "%s\\n" "pause"      > "${_mplayer__fifo}" ;;
+        next)              printf "%s\\n" "pt_step 1"  > "${_mplayer__fifo}" ;;
+        previous)          printf "%s\\n" "pt_step -1" > "${_mplayer__fifo}" ;;
     esac
 }
 
@@ -42,7 +47,7 @@ _mpd()
     esac
 }
 
-_multimedia_control()
+_player_ctrl()
 {
     [ -z "${1}" ] && return 1
     if [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
@@ -64,12 +69,12 @@ fi
 [ X"${#}" != X"1" ] && _usage
 
 case "${1}" in
-    pl*) _param="play"     ;;
-    pa*) _param="pause"    ;;
-    pr*) _param="previous" ;;
-    n*)  _param="next"     ;;
-    t*)  _param="toggle"   ;;
-    *)   _usage            ;;
+         pl*) _param="play"     ;;
+    pa*|stop) _param="pause"    ;;
+         pr*) _param="previous" ;;
+          n*) _param="next"     ;;
+          t*) _param="toggle"   ;;
+           *) _usage            ;;
 esac
 
-_multimedia_control "${_param}"
+_player_ctrl "${_param}"
