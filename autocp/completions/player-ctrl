@@ -1,6 +1,6 @@
-_multimedia_control()
+_player_ctrl()
 {
-    if ! command -v "multimedia-control" >/dev/null 2>&1; then
+    if ! command -v "player-ctrl" >/dev/null 2>&1; then
         return
     fi
 
@@ -10,13 +10,13 @@ _multimedia_control()
 
     #cur="${COMP_WORDS[COMP_CWORD]}"
     #prev="${COMP_WORDS[COMP_CWORD-1]}"
-    opts="$(multimedia-control -h 2>&1 | awk '/Usage/ {gsub(/\|/," "); $1=""; $2=""; sub(/^[ \t]+/, ""); print}')"
+    opts="$(player-ctrl -h 2>&1 | awk '/Usage/ {gsub(/\|/," "); $1=""; $2=""; sub(/^[ \t]+/, ""); print}')"
 
     #general options
     case "${cur}" in
         *) COMPREPLY=($(compgen -W "${opts}" -- ${cur})); return ;;
     esac
 } &&
-complete -F _multimedia_control multimedia-control
+complete -F _player_ctrl player-ctrl
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :
