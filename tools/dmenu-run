@@ -20,10 +20,10 @@ _die()
 }
 
 if ! command -v "dmenu" >/dev/null 2>&1; then
-    printf "%s\\n" "you need to install 'dmenu' to run this program" >&2
+    printf "%s\\n" "install 'dmenu' to run this program" >&2
     exit 1
 elif ! command -v "dmenu-path" >/dev/null 2>&1; then
-    _die "you need to install 'dmenu-path' to run this program"
+    _die "install 'dmenu-path' to run this program"
 fi
 
 exe="$(dmenu-path | ${DMENU})" && exec "${exe}"

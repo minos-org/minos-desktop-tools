@@ -186,10 +186,10 @@ _reload_wallpaper()
 }
 
 if ! command -v "dmenu" >/dev/null 2>&1; then
-    printf "%s\\n" "you need to install 'dmenu' to run this program" >&2
+    printf "%s\\n" "install 'dmenu' to run this program" >&2
     exit 1
 elif ! command -v "xrandr" >/dev/null 2>&1; then
-    _die "you need to install 'xrandr' to run this program"
+    _die "install 'xrandr' to run this program"
 fi
 
 xrandr_output="$(xrandr)"

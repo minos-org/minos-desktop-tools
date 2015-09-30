@@ -11,7 +11,7 @@ DMENU="dmenu -p > -l 20 -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #c0c0c0 -s
 #DMENU_OPTS="-fn "Source\Code\Pro-12"     -nb #000000 -nf #a0a0a0 -sb #0c73c2 -sf #ffffff -l 18 -p $(basename $0)"
 
 if ! command -v "dmenu" >/dev/null 2>&1; then
-    printf "%s\\n" "you need to install 'dmenu' to run this program" >&2
+    printf "%s\\n" "install 'dmenu' to run this program" >&2
     exit 1
 fi
 

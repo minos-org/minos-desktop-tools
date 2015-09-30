@@ -71,7 +71,7 @@ for arg; do #parse options
 done
 
 if ! command -v "setxkbmap" >/dev/null; then
-    _notify "Error" "you need to install setxkbmap to run this program"
+    _notify "Error" "install setxkbmap to run this program"
 fi
 
 current_layout="$(setxkbmap -query | awk '/layout/ {print $2}')"

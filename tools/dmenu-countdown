@@ -5480,7 +5480,7 @@ fi
 
 if [ -z "${1}" ]; then
     if ! command -v "dmenu" >/dev/null 2>&1; then
-        printf "%s\\n" "$(_basename "${0}"): you need to install 'dmenu' to run this program" >&2
+        printf "%s\\n" "$(_basename "${0}"): install 'dmenu' to run this program" >&2
         exit 1
     fi
     time="$(${DMENU} <&- && printf "\\n")"

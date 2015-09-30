@@ -38,10 +38,10 @@ done
 
 if [ -z "${1}" ]; then
     if ! command -v "dmenu" >/dev/null 2>&1; then
-        printf "%s\\n" "you need to install 'dmenu' to run this program" >&2
+        printf "%s\\n" "install 'dmenu' to run this program" >&2
         exit 1
     elif ! command -v "txt2speech" >/dev/null 2>&1; then
-        _die "you need to install 'txt2speech' to run this program"
+        _die "install 'txt2speech' to run this program"
     fi
     phrase="$(${DMENU} <&- && printf "\\n")"
 else

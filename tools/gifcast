@@ -48,10 +48,10 @@ for arg; do
 done
 
 if ! command -v "ffcast" >/dev/null 2>&1; then
-    _notify "[-] Error" "you need to install 'ffcast' to run this program"
+    _notify "[-] Error" "install 'ffcast' to run this program"
     exit 1
 elif ! command -v "convert" >/dev/null 2>&1; then
-    _notify "[-] Error" "you need to install 'convert' to run this program"
+    _notify "[-] Error" "install 'convert' to run this program"
     exit 1
 fi
 

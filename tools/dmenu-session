@@ -177,7 +177,7 @@ _lock()
     [ -z "${lockprog}" ] && lockprog="i3lock"
 
     if ! command -v "${lockprog}" >/dev/null 2>&1; then
-        _die "you need to install '${lockprog}' to run this option"
+        _die "install '${lockprog}' to run this option"
     fi
 
     [ X"${lockprog}" = X"i3lock" ] && i3lock_params="$(_get_i3lock_params)"
@@ -192,7 +192,7 @@ _lock()
 _logout()
 {
     if ! command -v "i3-msg" >/dev/null 2>&1; then
-        _die "you need to install 'i3-msg' to run this option"
+        _die "install 'i3-msg' to run this option"
     fi
     i3-msg exit &
 }
@@ -200,7 +200,7 @@ _logout()
 _relogin()
 {
     if ! command -v "i3-msg" >/dev/null 2>&1; then
-        _die "you need to install 'i3-msg' to run this option"
+        _die "install 'i3-msg' to run this option"
     fi
     i3-msg restart &
 }
@@ -235,7 +235,7 @@ _suspend()
     suspend="$(minos-config m-suspend 2>/dev/null)"
     [ -z "${suspend}" ] && suspend="pm-suspend"
     if ! command -v "${suspend}" >/dev/null 2>&1; then
-        _die "you need to install '${suspend}' to run this option"
+        _die "install '${suspend}' to run this option"
     fi
     ${_sudo} ${suspend}
 }
@@ -246,7 +246,7 @@ _hibernate()
     hibernate="$(minos-config m-hibernate 2>/dev/null)"
     [ -z "${hibernate}" ] && hibernate="pm-hibernate"
     if ! command -v "${hibernate}" >/dev/null 2>&1; then
-        _die "you need to install '${hibernate}' to run this option"
+        _die "install '${hibernate}' to run this option"
     fi
     ${_sudo} ${hibernate}
 }
@@ -258,7 +258,7 @@ fi
 
 if [ -z "${1}" ]; then
     if ! command -v "dmenu" >/dev/null 2>&1; then
-        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): you need to install 'dmenu' to run this program" >&2
+        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): install 'dmenu' to run this program" >&2
         exit 1
     fi
     choice="$(printf "%b\\n" "lock\nlogout\nrelogin\nreboot\nshutdown\nsuspend\nhibernate" | ${DMENU})"

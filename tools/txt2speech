@@ -71,7 +71,7 @@ for arg; do #parse options
     esac
 done
 
-[ ! -f "$(command -v "mplayer")" ] && { _notify "[-] Error" "you need to install 'mplayer' to run this program" 2>&1; exit 1; }
+[ ! -f "$(command -v "mplayer")" ] && { _notify "[-] Error" "install 'mplayer' to run this program" 2>&1; exit 1; }
 
 case "${1}" in
     -*) sl=$(printf "%s" "${1}"  | cut -d'-' -f2)

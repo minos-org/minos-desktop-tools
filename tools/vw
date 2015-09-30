@@ -133,7 +133,7 @@ if [ -f "$(command -v sxiv)" ]; then
 elif [ -f "$(command -v feh)" ]; then
     viewer="feh"
 else
-    _notify "Error" "you need to install either 'sxiv' or 'feh' to run this program"
+    _notify "Error" "install either 'sxiv' or 'feh' to run this program"
     exit 1
 fi
 

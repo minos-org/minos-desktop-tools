@@ -127,7 +127,7 @@ _movietime()
 }
 
 if ! command -v "xdotool" >/dev/null 2>&1; then
-    _notify "Error" "you need to install 'xdotool' to run this program"
+    _notify "Error" "install 'xdotool' to run this program"
     exit 1
 fi
 

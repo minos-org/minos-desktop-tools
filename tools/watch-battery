@@ -132,7 +132,7 @@ if ! flock -n 9 ; then
 fi
 
 if [ ! -f "$(command -v notify-send)" ] || [ ! -f "$(command -v pm-hibernate)" ] || [ ! -f "$(command -v acpi)" ]; then
-    _notify  "Error" "you need to install 'acpi', 'notify-send' and 'pm-utils' to run this program"
+    _notify  "Error" "install 'acpi', 'notify-send' and 'pm-utils' to run this program"
     exit 1
 fi
 
