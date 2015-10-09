@@ -37,8 +37,9 @@ done
 progname="$(minos-config m-statusbar 2>/dev/null)"
 if [ ! -z "${progname}" ]; then
     case "${progname}" in
-        minos-statusbar) break ;;
-        *) exec sh -c "${progname}" ;;
+        minos-statusbar) : ;;
+        *) #exec sh -c "${progname}"
+           exec "${progname}" ;;
     esac
 fi
 
@@ -65,5 +66,10 @@ else
     echo "{\"version\":1}"
     echo '['
     echo '[] ,'
-    exec conky -c /tmp/minos-statusbar
+    conky -c /tmp/minos-statusbar
+    #if command -v "setsid" >/dev/null 2>&1; then
+        #(setsid conky -c /tmp/minos-statusbar &)
+    #else
+        #exec conky -c /tmp/minos-statusbar
+    #fi
 fi

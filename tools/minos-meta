@@ -73,8 +73,17 @@ else
         default_te="$(minos-config m-terminal)"
         [ -z "${default_te}" ] && default_te="x-terminal-emulator"
         [ -z "${SHELL}" ] && SHELL="bash"
-        exec ${default_te} -title "${default_app}" -e ${SHELL} -c "eval ${default_app} $@"
+        if command -v "setsid" >/dev/null 2>&1; then
+            (setsid ${default_te} -title "${default_app}" -e ${SHELL} -c "eval ${default_app} $@" &)
+        else
+            exec ${default_te} -title "${default_app}" -e ${SHELL} -c "eval ${default_app} $@"
+        fi
     else
-        exec ${default_app} "${@}"
+        #https://www.reddit.com/r/dmenu/comments/26elgc/dmenu_run_that_wont_spawn_a_shell_process/
+        if command -v "setsid" >/dev/null 2>&1; then
+            (setsid ${default_app} "${@}" &)
+        else
+            exec ${default_app} "${@}"
+        fi
     fi
 fi
