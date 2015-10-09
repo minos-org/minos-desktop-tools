@@ -22,10 +22,12 @@ _usage()
     exit 1
 }
 
-_num()
-{   #look for a number, returns 0 on success, 1 otherwise
-    [ -z "${1}" ] && return 1
-    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
+_is_int()
+{   #look for an integer, returns 0 on success, 1 otherwise
+    #http://www.unix.com/shell-programming-and-scripting/172070-help-scripting-command.html
+    case "${1}" in
+        *[!0-9]*|"") return 1 ;;
+    esac
 }
 
 _basename()
@@ -100,7 +102,7 @@ for arg; do #parse options
         -n) if [ "${#}" -gt "1" ]; then
                 blimit="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
-                if ! _num "${blimit}"; then
+                if ! _is_int "${blimit}"; then
                     printf "%s\\n" "Option \`${arg}' requires a number: '${blimit}'" >&2
                     _usage
                 fi
