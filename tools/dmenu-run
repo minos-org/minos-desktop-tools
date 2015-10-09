@@ -1,9 +1,28 @@
 #!/bin/sh
 #description: dmenu based launcher
-#usage: dmenu-run is best suited for launching from a shortcut
+#usage: dmenu-run is best suited to be launched from a shortcut
 
 #example: dmenu-run
-#a gui menu appears asking for which program to launch
+#a gui menu appears asking which program to launch
+
+#================
+#possible entries
+#================
+
+#firefox                #launch firefox
+#firefox google.com     #launch firefox and open google.com
+#[man|info] ls          #open the ls manual in a terminal emulator
+#[u]ssh user@domain.tls #open a ssh session in a terminal emulator
+#vi[m] file             #open file in vim in a terminal emulator
+#htop:t                 #open htop in a terminal emulator
+#htop:term              #open htop in a terminal emulator
+#htop:terminal          #open htop in a terminal emulator
+#http://google.com      #open url in the default browser
+#/tmp/foobar.png        #open image in the default image viewer
+#files/urls/paths are open using
+    #1. xdg-open
+    #2. minos default app
+    #3. debian/ubuntu default app
 
 #looks better with a xft powered dmenu:
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
@@ -12,11 +31,107 @@ DMENU="dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #754
 #DMENU="dmenu -p > -i -fn Sawasdee-9 -nb #000000 -nf #ffffff -sb #000000 -sf #7541b9"
 #DMENU="dmenu -p > -i -fn TlwgTypewriter-9 -nb #000000 -nf #ffffff -sb #000000 -sf #7541b9"
 
+cli_cmds="man info vi vim ussh ssh htop top mutt tmux"
+terminal_emulators="urxvt rxvt gnome-terminal konsole xterm"
+
 _die()
 {
     [ -z "${1}" ] && _die_msg="dmenu" || _die_msg="${1}"
     printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | ${DMENU}
     exit 1
+}
+
+_get_terminal_vars() {
+    if [ -z "${default_terminal}" ]; then
+        default_terminal="$(minos-config m-terminal 2>/dev/null)"
+        if ! command -v "${default_terminal}" >/dev/null 2>&1; then
+            if command -v "x-terminal-emulator" >/dev/null 2>&1; then
+                default_terminal="x-terminal-emulator"
+            else
+                for terminal_emulator in ${terminal_emulators}; do
+                    if command -v "${terminal_emulator}" >/dev/null 2>&1; then
+                        default_terminal="${terminal_emulator}"
+                        break
+                    fi
+                done
+                [ -z "${default_terminal}" ] && default_terminal="xterm"
+            fi
+        fi
+    fi
+
+    [ -z "${SHELL}" ] && SHELL="bash" || :
+}
+
+_exec() {
+    [ -z "${1}" ] && return 1
+    if command -v "setsid" >/dev/null 2>&1; then
+        (setsid "${@}" &)
+    else
+        exec "${@}"
+    fi
+}
+
+_open() {
+    [ -z "${1}" ] && return 1
+    if command -v "xdg-open" >/dev/null 2>&1; then
+        _exec xdg-open "${@}"
+    else
+        case "${cmd}" in
+            http://*|https://*|ftp://*)
+                default_browser="$(minos-config m-browser 2>/dev/null)"
+                if ! command -v "${default_browser}" >/dev/null 2>&1; then
+                    default_browser="x-www-browser"
+                fi
+                _exec "${default_browser}" "${@}"
+                ;;
+            /*|./)
+                case "$(file --brief --mime-type "${cmd_1st_word}")" in
+                    text/*)
+                        if ! command -v "${EDITOR}" >/dev/null 2>&1; then
+                            EDITOR="editor"
+                        fi
+                        _exec "${EDITOR}" "${@}" ;;
+                    inode/directory)
+                        default_fm="$(minos-config m-file-manager 2>/dev/null)"
+                        if ! command -v "${default_fm}" >/dev/null 2>&1; then
+                            default_fm="x-www-browser"
+                        fi
+                        _exec "${default_fm}" "${@}"
+                        ;;
+                    application/pdf)
+                        default_pdf_viewer="$(minos-config m-pdf 2>/dev/null)"
+                        if ! command -v "${default_pdf_viewer}" >/dev/null 2>&1; then
+                            default_pdf_viewer="x-www-browser"
+                        fi
+                        _exec "${default_pdf_viewer}" "${@}"
+                        ;;
+                    video/*)
+                        default_video_player="$(minos-config m-video-player 2>/dev/null)"
+                        if ! command -v "${default_video_player}" >/dev/null 2>&1; then
+                            default_video_player="x-www-browser"
+                        fi
+                        _exec "${default_video_player}" "${@}"
+                        ;;
+                    audio/*)
+                        default_music_player="$(minos-config m-music-player 2>/dev/null)"
+                        if ! command -v "${default_music_player}" >/dev/null 2>&1; then
+                            default_music_player="x-www-browser"
+                        fi
+                        _exec "${default_music_player}" "${@}"
+                        ;;
+                    image/*)
+                        default_image_viewer="$(minos-config m-image-viewer 2>/dev/null)"
+                        if ! command -v "${default_image_viewer}" >/dev/null 2>&1; then
+                            default_image_viewer="display"
+                        fi
+                        _exec "${default_image_viewer}" "${@}"
+                        ;;
+                    *)  return 1 ;;
+                esac
+                ;;
+            *) : ;;
+        esac
+    fi
 }
 
 if ! command -v "dmenu" >/dev/null 2>&1; then
@@ -26,4 +141,36 @@ elif ! command -v "dmenu-path" >/dev/null 2>&1; then
     _die "install 'dmenu-path' to run this program"
 fi
 
-exe="$(dmenu-path | ${DMENU})" && exec "${exe}"
+cmd="$(dmenu-path | ${DMENU})" || exit "${?}"
+cmd="$(printf "%s" "${cmd}" | sed "s:\$HOME:${HOME}:g;s:~/:${HOME}/:;s:\"::g;s:\'::g;")"
+cmd_1st_word="${cmd%% *}"; cmd_1st_word="${cmd_1st_word%:*}"
+words_len=0; for word in ${cmd}; do words_len="$((words_len+1))"; done
+
+case "${cmd}" in
+    "o "*)    cmd="${cmd#o }"    && _open ${cmd} ;;
+    "open "*) cmd="${cmd#open }" && _open ${cmd} ;;
+    *:|*:t|*:te|*:ter|*:term|*:termi|*:termin|*:termina|*:terminal)
+        _get_terminal_vars
+        cmd="${cmd%:*}"
+        if [ -z "${cmd}" ]; then
+            _exec "${default_terminal}"
+        else
+            case "${cli_cmds}" in
+                *${cmd_1st_word}*) exec ${default_terminal} -title "${cmd}" \
+                    -e ${SHELL} -c "${cmd} || { echo 'Press [enter] to continue'; read junk; }" ;;
+                *) exec ${default_terminal} -title "${cmd}" -e ${SHELL} \
+                    -c "${cmd}; echo 'Press [enter] to continue'; read junk" ;;
+            esac
+            exit
+        fi ;;
+    *)  case "${cli_cmds}" in
+            *${cmd_1st_word}*) _get_terminal_vars
+                exec ${default_terminal} -title "${cmd}" -e ${SHELL} \
+                -c "${cmd} || { echo 'Press [enter] to continue'; read junk; }" ;;
+            *)  if command -v "${cmd_1st_word}" >/dev/null 2>&1; then
+                    _exec ${cmd}
+                else
+                    _open ${cmd}
+                fi ;;
+        esac ;;
+esac
