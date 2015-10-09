@@ -29,9 +29,10 @@ _mplayer()
 
     [ ! -p "${_mplayer__fifo}" ] && return 1
     case "${1}" in
-        play|pause|toggle) printf "%s\\n" "pause"      > "${_mplayer__fifo}" ;;
-        next)              printf "%s\\n" "pt_step 1"  > "${_mplayer__fifo}" ;;
-        previous)          printf "%s\\n" "pt_step -1" > "${_mplayer__fifo}" ;;
+        play|toggle) printf "%s\\n" "pause"         > "${_mplayer__fifo}" ;;
+        pause)       printf "%s\\n" "pausing pause" > "${_mplayer__fifo}" ;;
+        next)        printf "%s\\n" "pt_step 1"     > "${_mplayer__fifo}" ;;
+        previous)    printf "%s\\n" "pt_step -1"    > "${_mplayer__fifo}" ;;
     esac
 }
 

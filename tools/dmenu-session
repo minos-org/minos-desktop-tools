@@ -282,12 +282,12 @@ case "${choice}" in
     reboot) _reboot    ;;
   shutdown) _shutdown  ;;
    suspend) _lock &
-            #mplayer acts weird when the system gets back from sleep
-            player-ctrl pause >/dev/null 2>&1 || killall mplayer
+            #we never know where the machine could wake up
+            player-ctrl pause >/dev/null 2>&1
             _suspend   ;;
  hibernate) _lock &
-            #mplayer acts weird when the system gets back from sleep
-            player-ctrl pause >/dev/null 2>&1 || killall mplayer
+            #we never know where the machine could wake up
+            player-ctrl pause >/dev/null 2>&1
             _hibernate ;;
          *) exit 1     ;;
 esac
