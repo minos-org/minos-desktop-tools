@@ -38,6 +38,8 @@ _notify()
 {
     [ -z "${1}" ] && return 1
 
+    #set -x
+    #exec > /tmp/watch-battery.debug 2>&1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if [ X"${LOGNAME}" = X"root" ]; then
@@ -45,28 +47,32 @@ _notify()
             _notify__pid=$(pgrep dbus-launch|head -1)
             _notify__user=$(grep -z USER /proc/"${_notify__pid}"/environ | sed 's/USER=//')
             _notify__dbus="$(awk \
-                '/^DBUS_SESSION_BUS_ADDRESS/ {sub(/DBUS_SESSION_BUS_ADDRESS=/,""); print $0; exit}' \
-                /home/"${_notify__user}"/.dbus/session-bus/$(dbus-uuidgen --get)-*)"
+                '/^DBUS_SESSION_BUS_ADDRESS/ {sub(/DBUS_SESSION_BUS_ADDRESS=/,""); print $0; exit}' /home/"${_notify__user}"/.dbus/session-bus/$(dbus-uuidgen --get)-*)"
             _notify__display=$(grep -z DISPLAY /proc/"${_notify__pid}"/environ | sed 's/DISPLAY=//')
 
-            if ! sudo -u "${_notify__user}" sh -c \
-                "DBUS_SESSION_BUS_ADDRESS=\"${_notify__dbus}\" DISPLAY=\"${_notify__display}\" notify-send -t 1000 \"${1}\"  \"${2}\""; then
+            #fucking hate dbus/notify-send
+            su "${_notify__user}" -c "sh -c 'DISPLAY=\"${_notify__display}\" notify-send -t 1000 \"${1}\"  \"${2}\"'"
+            su "${_notify__user}" -c "sh -c 'DBUS_SESSION_BUS_ADDRESS=\"${_notify__dbus}\" DISPLAY=\"${_notify__display}\" notify-send -t 1000 \"${1}\"  \"${2}\"'"
+            #if ! su "${_notify__user}" -c "sh -c 'DBUS_SESSION_BUS_ADDRESS=\"${_notify__dbus}\" DISPLAY=\"${_notify__display}\" notify-send -t 1000 \"${1}\"  \"${2}\"'"; then
+            #if ! su "${_notify__user}" -c "sh -c 'DISPLAY=\"${_notify__display}\" notify-send -t 1000 \"${1}\"  \"${2}\"'"; then
+            #if ! notify-send -t 1000 "${1}"  "${2}"; then
+            if [ ! "${?}" = "0" ]; then
                 if command -v "gxmessage" 2>/dev/null; then
                     _notify__font="Monaco 9"
-                    gxmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
+                    DISPLAY="${_notify__display}" gxmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
                 else
                     _notify__font="fixed"
-                    xmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
+                    DISPLAY="${_notify__display}" xmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
                 fi
             fi
         else
             if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
                 if command -v "gxmessage" 2>/dev/null; then
                     _notify__font="Monaco 9"
-                    gxmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
+                    DISPLAY=:0 gxmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
                 else
                     _notify__font="fixed"
-                    xmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
+                    DISPLAY=:0 xmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
                 fi
             fi
         fi
