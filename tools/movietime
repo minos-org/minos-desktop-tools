@@ -2,51 +2,22 @@
 #movietime - disables power savings to watch movies.
 #usage: movietime
 
-resume_time="1440"    #re-enable resume after a full day
-susp_script="${HOME}/.movietime-suspend-inhibit"
-prog="$(expr "${0}" : '.*/\([^/]*\)')"
+resume_time="1440" #re-enable resume after a full day
+inhibit_script="${HOME}/.movietime.inhibit"
+
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
 txtbld="$(tput bold)" #bold
 txtrst="$(tput sgr0)" #reset
 
-_die()
-{
-    [ -z "${1}" ] && return 1
-    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
-    exit 1
-}
-
-_notify()
-{
-    [ -z "${1}" ] && return 1
-    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
-        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
-        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
-            if command -v "gxmessage" 2>/dev/null; then
-                font="Monaco 9"
-                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
-            else
-                font="fixed"
-                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
-            fi
-        fi
-    else
-        if [ -z "${2}" ]; then
-            printf "%s\\n" "${1}"
-        else
-            printf "%s: %s\\n" "${1}" "${2}"
-        fi
-    fi
-}
-
 _usage()
 {
     printf "\\n" >&2
-    printf "%s\\n" "   ${prog} disables screen blanking and screensaver to allow viewing a video. Running the program again will enable them." | fmt -c -w 76 >&2
+    printf "%s\\n" "   ${progname} disables screen blanking and screensaver to allow viewing a video. Running the program again will enable them." | fmt -c -w 76 >&2
     printf "\\n" >&2
 
     #display current values of power management and movietime.
-    _usage__running="$(pgrep -f "${susp_script}")"
+    _usage__running="$(pgrep -f "/bin/sh ${inhibit_script}")"
     _usage__dpms_status="$(xset -q  | awk '/DPMS is/ { printf $3 }')"
     _usage__susp_status="$([ -n "${_usage__running}" ] && printf "%s\\n" "Disabled" || printf "%s\\n" "Desktop settings")"
     _usage__standby_time="$(xset -q | awk '/^  Standby: / { printf $2/60 }')"
@@ -67,62 +38,150 @@ _usage()
     #DPMS enabled information
     if [ X"${_usage__dpms_status}" = X"Enabled" ]; then
         printf "%s\\n" "   DPMS:         ${_usage__dpms_status}" >&2
-        printf "%s\\n" "   DPMS times:   Blank: ${_usage__blank_time}; Standby: ${_usage__standby_time}; Suspend: ${_usage__susp_time}; Offtime: ${_usage__off_time}" >&2
+        printf "%s%s%s\\n" "   DPMS times:   Blank: ${_usage__blank_time}; "       \
+               "Standby: ${_usage__standby_time}; Suspend: ${_usage__susp_time}; " \
+               "Offtime: ${_usage__off_time}" >&2
         printf "%s\\n" "   Suspend:      ${_usage__susp_status}" >&2
     fi
     printf "\\n" >&2
-    printf "%s\\n" "   ${txtbld}${prog} settings${txtrst}:" >&2
+    printf "%s\\n" "   ${txtbld}${progname} settings${txtrst}:" >&2
     printf "%s\\n" "   Resume after: ${_usage__hours} hours" >&2
     printf "\\n" >&2
     exit 1
+}
+
+_die()
+{
+    [ -z "${1}" ] && return 1
+    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
+    exit 1
+}
+
+_notify()
+{
+    [ -z "${1}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                DISPLAY=:0 gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            else
+                font="fixed"
+                DISPLAY=:0 xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            fi
+        fi
+    else
+        if [ -z "${2}" ]; then
+            printf "%s\\n" "${1}"
+        else
+            printf "%s: %s\\n" "${1}" "${2}"
+        fi
+    fi
+}
+
+_daemonize()
+{   #daemonize an external command
+    #http://blog.n01se.net/blog-n01se-net-p-145.html
+    [ -z "${1}" ] && return 1
+    (   # 1. fork, to guarantee the child is not a process
+        # group leader, necessary for setsid) and have the
+        # parent exit (to allow control to return to the shell)
+
+        # 2. redirect stdin/stdout/stderr before running child
+        [ -t 0 ] && exec  </dev/null
+        [ -t 1 ] && exec  >/dev/null
+        [ -t 2 ] && exec 2>/dev/null
+        if ! command -v "setsid" >/dev/null 2>&1; then
+            # 2.1 guard against HUP and INT (in child)
+            trap '' 1 2
+        fi
+
+        # 3. ensure cwd isn't a mounted fs so it does't block
+        # umount invocations
+        cd /
+
+        # 4. umask (leave this to caller)
+        # umask 0
+
+        # 5. close unneeded fds
+        #XCU 2.7 Redirection says: open files are represented by
+        #decimal numbers starting with zero. The largest possible
+        #value is implementation-defined; however, all
+        #implementations shall support at least 0 to 9, inclusive,
+        #for use by the application.
+        i=3; while [ "${i}" -le "9" ]; do
+            eval "exec ${i}>&-"
+            i="$(($i + 1))"
+        done
+
+        # 6. create new session, so the child has no
+        # controlling terminal, this prevents the child from
+        # accesing a terminal (using /dev/tty) and getting
+        # signals from the controlling terminal (e.g. HUP, INT)
+        if command -v "setsid" >/dev/null 2>&1; then
+            exec setsid "$@"
+        else
+            if [ ! -f "${1}" ]; then
+                "$@"
+            else
+                exec "$@"
+            fi
+        fi
+    ) &
+    # 2.2 guard against HUP (in parent)
+    if ! command -v "setsid" >/dev/null 2>&1; then
+        disown -h "${!}"
+    fi
+}
+
+_kill_script()
+{
+    kill $(pgrep -f "/bin/sh ${inhibit_script}") > /dev/null 2>&1 || \
+    kill -9 $(pgrep -f "/bin/sh ${inhibit_script}") > /dev/null 2>&1
+    rm -rf "${inhibit_script}"
 }
 
 #suspend inhibit script (must be run as a separate process)
 _suspend_script()
 {
     printf "%s\\n" '#!/bin/sh
-    for time in $(seq 1 '${resume_time}'); do
-        # Simulate user activity every minute
+    i=0; while [ "$i" -le "'${resume_time}'" ]; do
+        #simulate user activity every minute
         xdotool keydown Shift_L keyup Shift_L
         #dbus-send --print-reply --type=method_call --dest=org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.SimulateUserActivity
+        i="$(($i + 1))"
         sleep 60
     done'
 }
 
 _movietime()
 {
-    #current DPMS times (in minutes)
-    _movietime__dmps_status="$(xset -q  | awk '/DPMS is/ { printf $3 }')" #enab. or disb.
-    _movietime__running="$(pgrep -f "${susp_script}")"
+    _movietime__dmps_status="$(xset -q | awk '/DPMS is/ {printf $3}')"
+    _movietime__running="$(pgrep -f "/bin/sh ${inhibit_script}")"
 
     #toggle powersaving
     if [ X"${_movietime__dmps_status}" = X"Enabled" ] && [ -z "${_movietime__running}" ]; then
         #disable blanking, screen power saving
         xset s off; xset -dpms
-        #create script
-        _suspend_script > "${susp_script}"
-        #make script executable
-        chmod +x "${susp_script}"
-        #run inhibit script
-        "${susp_script}" > /dev/null 2>&1 &
+        _kill_script
+        #daemonize inhibit script
+        _suspend_script > "${inhibit_script}" && chmod +x "${inhibit_script}"
+        _daemonize /bin/sh "${inhibit_script}"
         #run user defined script
         _movietime__hook_script="$(minos-config m-movietime-config 2>/dev/null)"
         [ -z "${_movietime__hook_script}" ] && _movietime__hook_script="${HOME}/.movietime"
-        [ -x "${_movietime__hook_script}" ] && _movietime__output="$("${_movietime__hook_script}" start 2>&1 >/dev/null)"
-        _notify "${prog}" "started"
+        [ -x "${_movietime__hook_script}" ] && ${_movietime__hook_script} start
+        _notify "${progname}" "started"
     else
         #enable blanking, screen power saving
         xset s on; xset +dpms
-        #kill inhibit script
-        if [ -z "${suspinhtest}" ]; then
-            kill -9 $(pgrep -f "movietime-susp") > /dev/null 2>&1
-            rm -rf "${susp_script}"
-        fi
+        _kill_script
         #kill user defined script
         _movietime__hook_script="$(minos-config m-movietime-config 2>/dev/null)"
         [ -z "${_movietime__hook_script}" ] && _movietime__hook_script="${HOME}/.movietime"
-        [ -x "${_movietime__hook_script}" ] && _movietime__output="$("${_movietime__hook_script}" stop 2>&1 >/dev/null)"
-        _notify "${prog}" "stopped"
+        [ -x "${_movietime__hook_script}" ] && ${_movietime__hook_script} stop
+        _notify "${progname}" "stopped"
     fi
 }
 
