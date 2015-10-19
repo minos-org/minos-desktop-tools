@@ -110,7 +110,12 @@ _vw()
 
     IFS="|"
     printf "%s\\n" "${viewer} ${_vw__arg}"
-    exec ${viewer} -f ${_vw__arr}
+
+    if command -v "setsid" >/dev/null 2>&1; then
+        (setsid ${viewer} -f ${_vw__arr} &)
+    else
+        exec ${viewer} -f ${_vw__arr}
+    fi
 }
 
 #if [ ! -t 0 ]; then #it doesn't work when mixed with pcmanfm
