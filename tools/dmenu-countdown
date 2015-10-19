@@ -1,22 +1,31 @@
 #!/bin/sh
-#description: dmenu based countdown
-#usage: dmenu-countdown is best suited for launching from a shortcut
+#description: dmenu based countdown/alarm
 
 #example: dmenu-countdown
-#a gui menu appears asking for the amount of time to countdown
-#format: HH:MM[:SS]
+#a gui menu asking for time to countdown appears
+
+#date format examples (similar to gnu `sleep`):
+# 5     #wait 5 seconds
+# 3m    #wait 3 minutes
+# 1h 7m #wait 1 hr and 7 minutes
+# 2d46m #wait 2 days and 46 minutes
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/bin/X11
+daemon="${HOME}/.dmenu-countdown.daemon"
+db="${HOME}/.dmenu-countdown.db"
+tune="${HOME}/.dmenu-countdown.tune"
+alarm_basename="${HOME}/.dmenu-countdown.alarm"
+
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
 #looks better with a xft powered dmenu:
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #ffffff'
 
-#printf "%s\\n" "main(i){for(i=0;;i++)putchar(((i*(i>>8|i>>9)&46&i>>8))^(i&i>>13|i>>6));}" | \
-#gcc -static -x c - -o dmenu-countdown.tone
-
-#compiled statically for Linux 32/64
-tune='H4sIAKJX4VUAA+z9C3xU1fU/DM+ZmSSTMHAGDBg1aKyjEkFNNLQZE2zIBccQNBoClJvUKsVKxcIM
+#printf "%s\\n" \
+# "main(i){for(i=0;;i++)putchar(((i*(i>>8|i>>9)&46&i>>8))^(i&i>>13|i>>6));}" | \
+#  gcc -static -x c - -o ~/.dmenu-countdown.tune #compiled statically for Linux 32/64
+tune_b64='H4sIAKJX4VUAA+z9C3xU1fU/DM+ZmSSTMHAGDBg1aKyjEkFNNLQZE2zIBccQNBoClJvUKsVKxcIM
 oCImnhlgexybttr219ZWira2P39KW4oIirlAEhAlXERuYkAuMwyXcDE3IPOu7zpnLgkB+f+fPv/n
 fd/Pw4ec2fe91t5rr73W2rfHfvr4U+7bfzTL/ZTrsVnznrrDNeupxw3/4X8Z9O97w4fjN/N7wzNi
 fzPuyhqeeffwLEPmXcO/l3HX8Lu/e/fdhozM4d/N/K4hLeM/DUhv/9xzXD+cnZZm+NGMJ2Y+8SP3
@@ -5240,44 +5249,236 @@ vCrQXwButUu78pznPOc5z3nOc57znOc85znPec5znvOc5zznOc95znOe85znPOc5z3nOc57znOf+
 3Nz/A1iYKiAAeAoA'
 #'
 
-_basename()
-{   #portable basename
-    [ -z "${1}" ] && return 1 || _basename__name="${1}"
-    [ -z "${2}" ] || _basename__suffix="${2}"
-    case "${_basename__name}" in
-        /*|*/*) _basename__name="$(expr "${_basename__name}" : '.*/\([^/]*\)')" ;;
-    esac
-
-    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
-        if [ X"$(printf "%s" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
-           = X"$(printf "%s" "${_basename__suffix}")" ]; then
-            _basename__name="$(printf "%s" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
-        fi
-    fi
-
-    printf "%s\\n" "${_basename__name}"
-}
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(_basename "${0}") [option] [countdown time]" >&2
-    printf "%s\\n" "Dmenu countdown alert for tiling windows managers." >&2
+    printf "%s\\n" "Usage: ${progname} [option] [time|stop]" >&2
+    printf "%s\\n" "Dmenu countdown alarm." >&2
     printf "%s\\n" >&2
-    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
-    printf "%s\\n" "  -p, --player use specified player, eg. mplayer" >&2
-    printf "%s\\n" "  -t, --tune   use specified tune,   eg. /tune.flac" >&2
+    printf "%s\\n" "  stop [regex]    stop last or specified alarm" >&2
+    printf "%s\\n" >&2
+    printf "%s\\n" "  -h, --help      show this message and exit" >&2
+    printf "%s\\n" "  -e, --exec      exec on timeout eg. 'mplayer /path/alarm.ogg'" >&2
+    printf "%s\\n" "  -t, --timeout   stop alarm after specified time, by default 30m" >&2
+    printf "%s\\n" >&2
+    printf "%s\\n" "Time format (similar to gnu \`sleep\`):" >&2
+    printf "%s\\n" "  5           =>  wait 5 seconds" >&2
+    printf "%s\\n" "  3m          =>  wait 3 minutes" >&2
+    printf "%s\\n" "  1h 7m       =>  wait 1 hr and 7 minutes" >&2
+    printf "%s\\n" "  1h:13m:12s  =>  wait 1 hr, 13 minutes and 12 seconds" >&2
+    printf "%s\\n" "  2d46m       =>  wait 2 days and 46 minutes" >&2
     exit 1
 }
 
+_notify()
+{
+    [ -z "${1}" ] && return 1
+    kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+    if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+        if command -v "gxmessage" 2>/dev/null; then
+            font="Monaco 9"
+            DISPLAY=:0 gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+        else
+            font="fixed"
+            DISPLAY=:0 xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+        fi
+    fi
+}
+
+_wakeup_at()
+{   #sets the wakeup time to the absolute time time_t.
+    #time_t is the time in seconds since 1970-01-01, 00:00 UTC
+    [ -z "${1}" ] && return 1
+    if [ ! X"${LOGNAME}" = X"root" ]; then
+        command -v "sudo" >/dev/null 2>&1 && _sudo="sudo -n"
+    fi
+    if command -v "rtcwake" >/dev/null 2>&1; then
+        ${_sudo} rtcwake -m disable >/dev/null
+        [ "${1}" -gt "0" ] && ${_sudo} rtcwake -m no -t "${1}" >/dev/null
+    else
+        return 1
+    fi
+}
+
+_cleanup()
+{
+    _wakeup_at "0"
+    for i in $(at -l 2>/dev/null| awk '{print $1}');do
+        if at -c "${i}" | grep "^#dmenu-countdown.alarm." >/dev/null 2>&1; then
+           at -r "${i}"
+        fi
+    done
+    rm -rf "${HOME}"/.dmenu-countdown*
+    kill $(pgrep -f "/bin/sh ${daemon}") > /dev/null 2>&1 || \
+        kill -9 $(pgrep -f "/bin/sh ${daemon}") > /dev/null 2>&1
+    exit 0
+}
+
+_next_alarm_in_time()
+{
+    [ -z "${1}" ] && return 1
+    #use the 4th field which is the id because of its uniqueness and significance
+    #time_string:exec:timet_orig:timet_target:timeout
+    _neitime__alarm="$(printf "%s" "${1}"|cut -d":" -f4|sort|awk '{print; exit}')"
+    printf "%s" "${1}" | awk '/'"${_neitime__alarm}"'/{print; exit}'
+}
+
+_stop()
+{   #1. stop current alarm
+    #2. remove current alarm from db and at daemon
+    #3. update autowakeup to next alarm
+    #4. restart daemon for remaining alarms
+
+    #find current alarm
+    _stop__db_alarms="$(cat "${db}" 2>/dev/null)"
+    [ -z "${_stop__db_alarms}" ] && _cleanup
+
+    if [ -z "${1}" ]; then
+       #if no input is available select the last alarm, in a FILO stack way
+        _stop__alarm_nr="$(printf "%s" "${_stop__db_alarms}" | \
+            awk 'END {print NR}')"
+    else
+        _stop__alarm_nr="$(printf "%s" "${_stop__db_alarms}" | \
+            awk '/'"${@}"'/ {print NR}')"
+        [ -z "${_stop__alarm_nr}" ] && \
+            _notify "Error" "alarm '${@}' not found" && exit 1
+    fi
+
+    _stop__alarm="$(printf "%s" "${_stop__db_alarms}"        | \
+        awk 'NR=='"${_stop__alarm_nr}"'')"
+    #use the 4th field which is the id because of its uniqueness and significance
+    #time_string:exec:timet_orig:timet_target:timeout
+    _stop__alarm_id="${_stop__alarm%:*}"
+    _stop__alarm_id="${_stop__alarm_id##*:}"
+
+    #1. stop current alarm
+    if [ -f "${alarm_basename}.${_stop__alarm_id}" ]; then
+        for pid in $(pgrep -f "/bin/sh ${alarm_basename}.${_stop__alarm_id}" 2>/dev/null); do
+            kill -15 -"${pid}"
+            sleep 0.1 2>/dev/null || sleep 1
+            kill -9 -"${pid}" 2>/dev/null
+        done
+        rm -rf "${alarm_basename}.${_stop__alarm_id}"*
+        _notify "Cancel" "alarm stopped!"
+    else
+        _notify "Cancel" "${_stop__alarm%%:*} countdown canceled!"
+    fi
+
+    #2.1 remove nth alarm from db
+    sed "${_stop__alarm_nr}d" < "${db}" > "${db}.tempfile" && \
+        mv "${db}.tempfile" "${db}"
+    _stop__db_alarms="$(cat "${db}" 2>/dev/null)"
+    _stop__db_nr="$(printf "%s" "${_stop__db_alarms}" | awk 'END {print NR}')"
+
+    #exit if no more alarms
+    [ X"${_stop__db_nr}" = X"0" ] && _cleanup
+
+    #2.2 remove nth alarm from 'at'
+    for i in $(at -l 2>/dev/null | awk '{print $1}');do
+        if at -c "${i}" | grep "^#dmenu-countdown.alarm.${_stop__alarm_id}" \
+            >/dev/null 2>&1; then
+            at -r "${i}" && break
+        fi
+    done
+
+    #get next alarm
+    _stop__next_alarm_in_time="$(_next_alarm_in_time "${_stop__db_alarms}")"
+    #use the 4th field which is the id because of its uniqueness and significance
+    #time_string:exec:timet_orig:timet_target:timeout
+    _stop__next_alarm_in_time_id="${_stop__next_alarm_in_time%:*}"
+    _stop__next_alarm_in_time_id="${_stop__next_alarm_in_time_id##*:}"
+
+    #3. update autowakeup to next alarm, this is useful in case the systems gets
+    #suspended/shutdown, wake up 180 seconds (3 minutes) before
+    #next alarm
+    _wakeup_at "$(($_stop__next_alarm_in_time_id - 180))"
+
+    #4. restart daemon for remaining alarms
+    kill $(pgrep -f "/bin/sh ${daemon}") > /dev/null 2>&1 || \
+        kill -9 $(pgrep -f "/bin/sh ${daemon}") > /dev/null 2>&1
+    _daemonize /bin/sh "${daemon}"
+}
+
+_secs()
+{   #translate sleep date format to seconds
+    [ -z "${1}" ] && return 1
+    _siatime__string="${1}"
+
+    _siatime__partial_secs="0"; _siatime__total_secs="0"
+    #read char by char
+    while [ "${_siatime__string}" ]; do
+        _siatime__1stchar="${_siatime__string#?}"
+        _siatime__1stchar="${_siatime__string%$_siatime__1stchar}"
+
+        case "${_siatime__1stchar}" in
+            m|M) _siatime__partial_secs="$(($_siatime__partial_secs * 60))"
+                _siatime__total_secs="$(($_siatime__total_secs + _siatime__partial_secs))"
+                _siatime__partial_secs="0"; i="1"
+                ;;
+            h|H) _siatime__partial_secs="$(($_siatime__partial_secs * 3600))"
+                _siatime__total_secs="$(($_siatime__total_secs + _siatime__partial_secs))"
+                _siatime__partial_secs="0"; i="1"
+                ;;
+            d|D) _siatime__partial_secs="$(($_siatime__partial_secs * 86400))"
+                _siatime__total_secs="$(($_siatime__total_secs + _siatime__partial_secs))"
+                _siatime__partial_secs="0"; i="1"
+                ;;
+            0|1|2|3|4|5|6|7|8|9)
+                _siatime__partial_secs="${_siatime__partial_secs}${_siatime__1stchar}"
+                _siatime__partial_secs="${_siatime__partial_secs##0}"
+                ;;
+        esac
+        [ X"${_siatime__string}" = X"${_siatime__1stchar}" ] && \
+            _siatime__string='' || _siatime__string="${_siatime__string#?}"
+    done
+
+    _siatime__total_secs="$(($_siatime__total_secs + $_siatime__partial_secs))"
+
+    [ X"${_siatime__total_secs}" = X"0" ] && return 1 || printf "%s\\n" "${_siatime__total_secs}"
+}
+
+_secs2string()
+{   #seconds to pretty string, eg: 3666 => 1h 1m 6s
+    case "${1}" in
+        *[!0-9]*|"") return 1 ;;
+    esac
+
+    _s2string__num="${1}"; _s2string__min="0"; _s2string__hour="0"; _s2string__day="0"
+    if [ "${_s2string__num}" -gt "59" ]; then
+        _s2string__sec="$((${_s2string__num} % 60))"
+        _s2string__num="$((${_s2string__num} / 60))"
+        if [ "${_s2string__num}" -gt "59" ]; then
+            _s2string__min="$((${_s2string__num} % 60))"
+            _s2string__num="$((${_s2string__num} / 60))"
+            if [ "${_s2string__num}" -gt "23" ]; then
+                _s2string__hour="$((${_s2string__num} % 24))"
+                _s2string__day="$((${_s2string__num} / 24))"
+            else
+                _s2string__hour="${_s2string__num}"
+            fi
+        else
+            _s2string__min="${_s2string__num}"
+        fi
+    else
+        _s2string__sec="${_s2string__num}"
+    fi
+
+    _s2string__hours_in_days="$(($_s2string__day * 24))"
+    _s2string__hour="$(($_s2string__hour + _s2string__hours_in_days))"
+
+    printf "%s\\n" "${_s2string__hour}h ${_s2string__min}m ${_s2string__sec}s"
+}
+
 _decode64()
-{   #decode a base64 string, portable version
+{   #decode a base64 string
     [ ! -t 0 ] && set -- "${@}" "$(cat)"
     [ -z "${1}" ] && return 1
     if command -v "base64" >/dev/null 2>&1; then
         printf "%s\\n" "${@}" | base64 -d
     elif command -v "openssl" >/dev/null 2>&1; then
         printf "%s\\n" "${@}" | openssl enc -base64 -d
-    elif command -v "awk" >/dev/null 2>&1 && (command -v "uudecode" || command -v "busybox") >/dev/null 2>&1; then
+    elif command -v "awk" >/dev/null 2>&1 && \
+        (command -v "uudecode" || command -v "busybox") >/dev/null 2>&1; then
         if command -v "uudecode" >/dev/null 2>&1; then
             uudecode__bin="uudecode"
         elif command -v "busybox"  >/dev/null 2>&1; then
@@ -5295,14 +5496,14 @@ _decode64()
             BEGIN { b64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
               uu="`!\"#$%&'\''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
               _decode64_awk(); exit; }'
-            printf "%s\\n%s\\n" '`' 'end'
+            printf "%s\\n%s\\n" '`' 'end' #'
           ) | $uudecode__bin
         }
         printf "%s\\n" "${@}" | _decode64_awk
     else
         _decode64_sh() { [ ! -t 0 ] && set -- "${@}" "$(cat)"
             _decode64_sh__b64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-            _decode64_sh__n="0"; _decode64_sh__v="0"; _decode64_sh__args="${@}"
+            _decode64_sh__n="0"; _decode64_sh__v="0"; _decode64_sh__args="$@"
             while [ "${_decode64_sh__args}" ]; do #process char by char
                 _decode64_sh__char="${_decode64_sh__args%${_decode64_sh__args#?}}"
                 case "${_decode64_sh__char}" in
@@ -5332,301 +5533,319 @@ _decode64()
         }
         printf "%s\\n" "${@}" | _decode64_sh
     fi
-} #too hardcore for vim syntax '`"
+} # too hardcore for vim syntax`"
 
-_number()
-{   #look for a number, returns 0 on success, 1 otherwise
+_daemonize()
+{   #daemonize an external command
+    #http://blog.n01se.net/blog-n01se-net-p-145.html
     [ -z "${1}" ] && return 1
-    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null 2>&1
-}
+    (   # 1. fork, to guarantee the child is not a process
+        # group leader, necessary for setsid) and have the
+        # parent exit (to allow control to return to the shell)
 
-_notify()
-{
-    [ -z "${1}" ] && return 1
-    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
-        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
-        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
-            if command -v "gxmessage" 2>/dev/null; then
-                font="Monaco 9"
-                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+        # 2. redirect stdin/stdout/stderr before running child
+        [ -t 0 ] && exec  </dev/null
+        [ -t 1 ] && exec  >/dev/null
+        [ -t 2 ] && exec 2>/dev/null
+        if ! command -v "setsid" >/dev/null 2>&1; then
+            # 2.1 guard against HUP and INT (in child)
+            trap '' 1 2
+        fi
+
+        # 3. ensure cwd isn't a mounted fs so it does't block
+        # umount invocations
+        cd /
+
+        # 4. umask (leave this to caller)
+        # umask 0
+
+        # 5. close unneeded fds
+        #XCU 2.7 Redirection says: open files are represented by
+        #decimal numbers starting with zero. The largest possible
+        #value is implementation-defined; however, all
+        #implementations shall support at least 0 to 9, inclusive,
+        #for use by the application.
+        i=3; while [ "${i}" -le "9" ]; do
+            eval "exec ${i}>&-"
+            i="$(($i + 1))"
+        done
+
+        # 6. create new session, so the child has no
+        # controlling terminal, this prevents the child from
+        # accesing a terminal (using /dev/tty) and getting
+        # signals from the controlling terminal (e.g. HUP, INT)
+        if command -v "setsid" >/dev/null 2>&1; then
+            exec setsid "$@"
+        else
+            if [ ! -f "${1}" ]; then
+                "$@"
             else
-                font="fixed"
-                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+                exec "$@"
             fi
         fi
-    else
-        if [ -z "${2}" ]; then
-            printf "%s\\n" "${1}"
+    ) &
+    # 2.2 guard against HUP (in parent)
+    if ! command -v "setsid" >/dev/null 2>&1; then
+        disown -h "${!}"
+    fi
+}
+
+_auto_increase_vol_script()
+{
+    printf "%s\\n" "#!/bin/sh"
+    printf "%s\\n" "#autogenerated, don't modify"
+    printf "%s\\n" "timeout=\"${next_alarm_in_time_timeout}\""
+    cat << 'E=O=F'
+    trap 'amixer -q set Master "${orig_audio_level}"; exit' 1 2 3 15
+    current_time_in_secs_since_1970="$(date '+%s')"
+    timeout_in_secs_since_1970="$(($current_time_in_secs_since_1970 + $timeout))"
+    #get current audio level
+    orig_audio_level="$(amixer get 'Master',0 | awk '/Mono:/ {sub(/\[/,""); sub(/\]/,""); print $4}')"
+    i="0"; while [ "${timeout_in_secs_since_1970}" -gt "${current_time_in_secs_since_1970}" ]; do
+        i="$(($i + 1))"; if [ "$(($i % 2))" -eq "0" ]; then
+            amixer -q set Master 1+
+        fi
+        sleep 1; current_time_in_secs_since_1970="$(date '+%s')"
+    done
+E=O=F
+}
+
+_play_script()
+{
+    printf "%s\\n" "#!/bin/sh"
+    printf "%s\\n" "#autogenerated, don't modify"
+    printf "%s\\n" "id=\"${next_alarm_in_time_target}\""
+    printf "%s\\n" "cmd='${next_alarm_in_time_cmd}'"
+    printf "%s\\n" "timeout=\"${next_alarm_in_time_timeout}\""
+    printf "%s\\n" "tune=\"${tune}\""
+    cat << 'E=O=F'
+    current_time_in_secs_since_1970="$(date '+%s')"
+    timeout_in_secs_since_1970="$(($current_time_in_secs_since_1970 + $timeout))"
+    while [ "${timeout_in_secs_since_1970}" -gt "${current_time_in_secs_since_1970}" ]; do
+        if [ X"${cmd}" = X"${tune}" ]; then
+            "${tune}" | aplay >/dev/null 2>&1
         else
-            printf "%s: %s\\n" "${1}" "${2}"
+            secs_since_1970="$(date '+%s')"
+            eval ${cmd} || "${tune}" | aplay >/dev/null 2>&1
+            #mplayer will return 0 even if its file parameters are incorrect
+            [ X"${secs_since_1970}" = X"$(date '+%s')" ] && "${tune}" | aplay >/dev/null 2>&1
+        fi
+        current_time_in_secs_since_1970="$(date '+%s')"
+    done
+    dmenu-countdown stop "${id}"
+E=O=F
+}
+
+_daemon_script()
+{
+    printf "%s\\n" "#!/bin/sh"
+    printf "%s\\n" "#autogenerated by ${progname}"
+    printf "%s\\n" "daemon=\"${daemon}\""
+    printf "%s\\n" "db=\"${db}\""
+    printf "%s\\n" "tune=\"${tune}\""
+    printf "%s\\n" "alarm_basename=\"${alarm_basename}\""
+    sed -e "/^_next_alarm_in_time()/,/^}/p"       -e '1,$d' "${0}" 2>/dev/null
+    sed -e "/^_wakeup_at()/,/^}/p"                -e '1,$d' "${0}" 2>/dev/null
+    sed -e "/^_notify()/,/^}/p"                   -e '1,$d' "${0}" 2>/dev/null
+    sed -e "/^_secs2string()/,/^}/p"              -e '1,$d' "${0}" 2>/dev/null
+    sed -e "/^_play_script()/,/^}/p"              -e '1,$d' "${0}" 2>/dev/null
+    sed -e "/^_auto_increase_vol_script()/,/^}/p" -e '1,$d' "${0}" 2>/dev/null
+    sed -e "/^_daemonize()/,/^}/p"                -e '1,$d' "${0}" 2>/dev/null
+    cat << 'E=O=F'
+    #should not be common have processes with this name
+    i="0"; for p in $(pgrep -f "${daemon}" 2>/dev/null); do
+        i="$(($i+1))"
+        [ "${i}" -gt "1" ] && exit
+    done
+    [ -f "${db}" ] || exit
+    db_alarms="$(cat "${db}" 2>/dev/null)"
+    [ -z "${db_alarms}" ] && exit
+    next_alarm_in_time="$(_next_alarm_in_time "${db_alarms}")"
+    #time_string:cmd:timet_orig:timet_target:timeout
+    next_alarm_in_time_cmd="${next_alarm_in_time#*:}"
+    next_alarm_in_time_cmd="${next_alarm_in_time_cmd%%:*}"
+    next_alarm_in_time_cmd="$(printf "%s" "${next_alarm_in_time_cmd}" | \
+        sed "s:\$HOME:${HOME}:g;s:~/:${HOME}/:;")"
+    next_alarm_in_time_origen="${next_alarm_in_time#*:}"
+    next_alarm_in_time_origen="${next_alarm_in_time_origen#*:}"
+    next_alarm_in_time_origen="${next_alarm_in_time_origen%%:*}"
+    next_alarm_in_time_target="${next_alarm_in_time%:*}"
+    next_alarm_in_time_target="${next_alarm_in_time_target##*:}"
+    next_alarm_in_time_timeout="${next_alarm_in_time##*:}"
+    wakeup_secs="$(($next_alarm_in_time_target - 180))"
+    secs="$(($next_alarm_in_time_target - $next_alarm_in_time_origen))"
+    half="$((${secs}/2))"; quarter="$((${secs}/4))"; almost="$((${secs}/10))"
+    half_since_1970="$(date    '+%s' -d "+ $(($secs - $half)) seconds")"
+    quarter_since_1970="$(date '+%s' -d "+ $(($secs - $quarter)) seconds")"
+    almost_since_1970="$(date  '+%s' -d "+ $(($secs - $almost)) seconds")"
+    current_time_in_secs_since_1970="$(date '+%s')"
+    i="0"; while [ "${next_alarm_in_time_target}" -gt "${current_time_in_secs_since_1970}" ]; do
+    #reschedule wakeup (60 seconds in the feature) if it gets too close to the
+    #alarm time so the system has enough time to hibernate if that's the case
+    if [ "$(($wakeup_secs - $current_time_in_secs_since_1970))" -lt "60" ]; then
+        wakeup_secs="$(($current_time_in_secs_since_1970 + 60))"
+        _wakeup_at "${wakeup_secs}"
+    fi
+    if [ "${current_time_in_secs_since_1970}" -ge "${half_since_1970}" ]; then
+        if [ "${i}" -eq "0"  ]; then
+    _notify "Alarm reminder" "time left: $(_secs2string "$(($next_alarm_in_time_target - $current_time_in_secs_since_1970))")"
+    i="$(($i + 1))"
         fi
     fi
-}
-
-_die_invalid_format()
-{
-    _notify "Invalid format" "$(_basename ${0}): HH:MM[:SS]"
-    exit 1
-}
-
-_print_time()
-{  #seconds to pretty string
-    [ -z "${1}" ] && return 1
-    printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
-
-    _ptime__num="${1}"
-    _ptime__min="0"
-    _ptime__hour="0"
-    _ptime__day="0"
-    if [ "${_ptime__num}" -gt "59" ]; then
-        _ptime__sec="$((${_ptime__num} % 60))"
-        _ptime__num="$((${_ptime__num} / 60))"
-        if [ "${_ptime__num}" -gt "59" ]; then
-            _ptime__min="$((${_ptime__num} % 60))"
-            _ptime__num="$((${_ptime__num} / 60))"
-            if [ "${_ptime__num}" -gt "23" ]; then
-                _ptime__hour="$((${_ptime__num} % 24))"
-                _ptime__day="$((${_ptime__num} / 24))"
-            else
-                _ptime__hour="${_ptime__num}"
-            fi
-        else
-            _ptime__min="${_ptime__num}"
+    if [ "${current_time_in_secs_since_1970}" -ge "${quarter_since_1970}" ]; then
+        if [ "${i}" -eq "1"  ]; then
+    _notify "Alarm reminder" "time left: $(_secs2string "$(($next_alarm_in_time_target - $current_time_in_secs_since_1970))")"
+    i="$(($i + 1))"
         fi
-    else
-        _ptime__sec="${_ptime__num}"
     fi
+    if [ "${current_time_in_secs_since_1970}" -ge "${almost_since_1970}" ]; then
+        if [ "${i}" -eq "2"  ]; then
+    _notify "Almost!" "time left: $(_secs2string "$(($next_alarm_in_time_target - $current_time_in_secs_since_1970))")"
+    i="$(($i + 1))"
+        fi
+    fi
+    sleep 1 && current_time_in_secs_since_1970="$(date '+%s')"
+    done
 
-    printf "%s\\n" "${_ptime__hour}h ${_ptime__min}m ${_ptime__sec}s"
+    for f in "${alarm_basename}."*; do
+        [ -f "${f}" ] && exit
+    done
+
+    _notify "ALARM" "beep, beep, beep!"
+    _play_script > "${alarm_basename}.${next_alarm_in_time_target}"
+    chmod +x "${alarm_basename}.${next_alarm_in_time_target}"
+    _auto_increase_vol_script > "${alarm_basename}.${next_alarm_in_time_target}.volume"
+    chmod +x "${alarm_basename}.${next_alarm_in_time_target}.volume"
+    _daemonize /bin/sh "${alarm_basename}.${next_alarm_in_time_target}"
+    _daemonize /bin/sh "${alarm_basename}.${next_alarm_in_time_target}.volume"
+E=O=F
 }
 
-_wakeup_at()
-{
-    [ -z "${1}" ] && return 1
-    if command -v "rtcwake" >/dev/null 2>&1; then
-        ${_sudo} rtcwake -m disable >/dev/null
-        [ "${1}" -gt "0" ] && ${_sudo} rtcwake -m no -t "${1}" >/dev/null
-    else
-        return 1
-    fi
-}
+_dmenu_countdown()
+{   #1. append alarm to db
+    #2. create auxiliar files
+    #3. update at and autowakup entries
+    #4. restart daemon for remaining alarms
 
-_play_tune()
-{
-    if [ "${player}" ]; then
-        "${player}" "${tune_song}" >/dev/null 2>&1 &
-    else
-        "${tune}" | aplay >/dev/null 2>&1 &
-    fi
-}
+    #1. append alarm to db
+    #time:exec:timet_current:timet_target:timeout
+    _dcountdown__alarm_id="$(date '+%s' -d "+ ${secs} seconds")"
+    printf "%s:%s:%s:%s:%s\\n" "${time}" "${cmd}" "$(date '+%s')" \
+        "${_dcountdown__alarm_id}" "${timeout}" >> "${db}"
+    _notify "Alarm added" "time left: $(_secs2string "${secs}")"
 
-_stop_tune()
-{
-    if [ "${player}" ]; then
-        killall "${player}" >/dev/null 2>&1
-    else
-        killall aplay >/dev/null 2>&1
-        killall dmenu-countdown.tone >/dev/null 2>&1
+    #2. create auxiliar files
+    if [ ! -f "${tune}" ]; then
+        (cd /tmp && printf "%s" "${tune_b64}" | _decode64 | zcat | tar xf -) && \
+        mv /tmp/dmenu-countdown.tone "${tune}" && chmod +x "${tune}"
     fi
 
-    rm -rf "${HOME}"/.dmenu_countdown; rm -rf "${tune}"
+    if [ ! -f "${daemon}" ]; then
+        _daemon_script > "${daemon}" && chmod +x "${daemon}"
+    fi
+
+    #3.1 update at
+    if pgrep "atd" >/dev/null 2>&1; then
+        (cd / #'at' inherits the current environment
+        #'at' is unable to set seconds, but minutes, hours, days, etc
+        minutes="$(($secs / 60))"; [ X"${minutes}" = X"0" ] && minutes="1"
+        printf "%s\\n%s\\n" \
+            "#dmenu-countdown.alarm.${_dcountdown__alarm_id}" "${daemon}" | \
+            at now + "${minutes}" min
+        )
+    else
+        printf "%s\\n" "Warning: atd is not running, skipping at entry ..."
+    fi
+
+    #3.2 update autowakeup, ensure lowest time is set to wakeup, wake up 180
+    #seconds (3 minutes) before next alarm
+    _dcountdown__db_alarms="$(cat "${db}" 2>/dev/null)"
+    _dcountdown__next_alarm_in_time="$(_next_alarm_in_time "${_dcountdown__db_alarms}")"
+    #use the 4th field which is the id because of its uniqueness and significance
+    #time_string:exec:timet_orig:timet_target:timeout
+    _dcountdown__next_alarm_in_time_id="${_dcountdown__next_alarm_in_time%:*}"
+    _dcountdown__next_alarm_in_time_id="${_dcountdown__next_alarm_in_time_id##*:}"
+    _wakeup_at "$(($_dcountdown__next_alarm_in_time_id - 180))"
+
+    #4. restart daemon for remaining alarms
+    kill $(pgrep -f "/bin/sh ${daemon}") > /dev/null 2>&1 || \
+        kill -9 $(pgrep -f "/bin/sh ${daemon}") > /dev/null 2>&1
+    _daemonize /bin/sh "${daemon}"
 }
 
 if [ ! -t 0 ]; then
-    #there is input comming from pipe or file, add to the end of $@
+    #add input comming from pipe or file to $@
     set -- "${@}" $(cat)
 fi
 
 for arg; do #parse options
     case "${arg}" in
-               '') exit 1 ;;
         -h|--help) _usage ;;
-        '-p'|'--player')
+        '-e'|'--exec')
                 if [ "${#}" -gt "1" ]; then
                     case "${2}" in
-                        -*) printf "%s\\n" "Option '${arg}' requires a parameter"; _usage ;;
+                        -*) printf "%s\\n" "Option '${arg}' requires a parameter"
+                            _usage ;;
                     esac
-                    shift; player="${1}"; [ "${1}" ] && shift
+                    shift; cmd="${1}"; [ "${1}" ] && shift
                 else
-                    printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+                    printf "%s\\n" "Option '${arg}' requires a parameter"
+                    _usage
                 fi ;;
-         -p*) player="${1#-p}"; shift ;;
-         --player*) player="${1#--player}"; shift ;;
-        '-t'|'--tune')
+         -e*)     cmd="${1#-e}"    ; shift ;;
+         --exec*) cmd="${1#--exec}"; shift ;;
+        '-t'|'--timeout')
                 if [ "${#}" -gt "1" ]; then
                     case "${2}" in
-                        -*) printf "%s\\n" "Option '${arg}' requires a parameter"; _usage ;;
+                        -*) printf "%s\\n" \
+                            "Option '${arg}' requires a parameter"; _usage ;;
                     esac
-                    shift; tune_song="${1}"; [ "${1}" ] && shift
-                    [ -f "${tune_song}" ] || { \
-                        _notify "Warning" "File '${tune_song}' doesn't exist, using built-in tone..."
-                        player=""; tune_song=""; }
+                    shift; timeout="${1}"; [ "${1}" ] && shift
                 else
-                    printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+                    printf "%s\\n" "Option '${arg}' requires a parameter"
+                    _usage
                 fi ;;
-         -t*) tune_song="${1#-t}"; shift ;;
-         --tune*) tune_song="${1#--tune}"; shift ;;
-              s*) rm -f /tmp/dmenu-countdown.lock; exit ;;
+         -t*)        timeout="${1#-t}"       ; shift ;;
+         --timeout*) timeout="${1#--timeout}"; shift ;;
+                 s*) shift; _stop "${@}" && exit 0   ;;
     esac
 done
 
-if [ -n "${player}" ] && [ -z "${tune_song}" ]; then
-    _notify "Warning" "Option '--player' requires to specify --tune, falling back to built-in tune..."
-    player=""
-elif [ -n "${tune_song}" ] && [ -z "${player}" ]; then
-    _notify "Warning" "Option '--tune' requires to specify --player, falling back to built-in tune..."
-    player=""
-fi
-
 if [ -z "${1}" ]; then
     if ! command -v "dmenu" >/dev/null 2>&1; then
-        printf "%s\\n" "$(_basename "${0}"): install 'dmenu' to run this program" >&2
+        printf "%s\\n" "${progname}: install 'dmenu' to run this program" >&2
         exit 1
     fi
     time="$(${DMENU} <&- && printf "\\n")"
 else
-    time="${1}"
+    time="${@}"
 fi
 
-if command -v "sudo" >/dev/null 2>&1; then
-    _sudo="sudo -n"
-fi
-
-[ X"${LOGNAME}" = X"root" ] && _sudo=""
-
-#start validation
 case "${time}" in
-    s*) rm -r /tmp/dmenu-countdown.lock; exit ;;
-    *:*) : ;;
-    '') exit ;;
-    *) _die_invalid_format ;;
+    s*) _stop "$(printf "%s\\n" "${time}" | \
+        awk '{$1=""; sub(/^[ \t]+/, ""); print}')" && exit 0 ;;
+    '') alarms="$(cat "${db}" 2>/dev/null | awk -F: '{printf $1 ":" $2 "\n" }')"
+        [ -z "${alarms}" ] || _notify "Configured alarms" "${alarms}"; exit ;;
+    *)  secs="$(_secs "${time}")"
+        [ -z "${secs}" ] && _notify "Invalid time format '${time}'"   \
+            "$(printf "\\n%s\\n%b\\n%b\\n%b\\n%b\\n%b" "Valid examples:" \
+            "\t" "5\t\t=> wait 5 minutes" "3m\t\t=> wait 3 minutes"      \
+            "1h 7m\t=> wait 1 hr and 7 minutes" \
+            "2d46m\t=> wait 2 days and 46 minutes")" && exit 1 ;;
 esac
 
-time__copy="${time}"; __i="0"; while [ "${time__copy}" ]; do
-    time__option="${time__copy%%:*}"
-    __i="$((${__i} + 1))"
-    [ X"${time__option}" = X"${time__copy}" ] && time__copy='' || time__copy="${time__copy#*:}"
-done
-
-if [ "${__i}" -lt "2" ] || [ "${__i}" -gt "3" ]; then
-    #valid formats are either HH:MM or HH:MM:SS
-    _die_invalid_format
-fi
-
-hours="$(printf "%s"   "${time}" | cut -d: -f1)"
-minutes="$(printf "%s" "${time}" | cut -d: -f2)"
-seconds="$(printf "%s" "${time}" | cut -d: -f3)"
-
-if ! _number "${hours}" || ! _number "${minutes}" ; then
-    _die_invalid_format
-else
-    if [ -n "${seconds}" ]; then
-        if ! _number "${seconds}"; then
-            _die_invalid_format
-        fi
+#default values
+[ -z "${cmd}" ]     && cmd="${tune}"
+[ -z "${timeout}" ] && timeout="1800" || (timeout_secs="$(_secs "${timeout}")"
+    if [ -z "${timeout_secs}" ]; then
+        _notify "Invalid timeout format '${timeout_secs}'"   \
+                "$(printf "\\n%s\\n%b\\n%b\\n%b\\n%b\\n%b" "Valid examples:" \
+                "\t" "5\t\t=> wait 5 minutes" "3m\t\t=> wait 3 minutes"      \
+                "1h 7m\t=> wait 1 hr and 7 minutes" \
+                "2d46m\t=> wait 2 days and 46 minutes")" && exit 1
+    else
+        timeout="${timeout_secs}"
     fi
-fi
-#end validation
+    )
 
-#create tune file
-if mount | grep /tmp | grep noexec >/dev/null 2>&1; then
-    mkdir "${HOME}"/.dmenu_countdown
-    (cd "${HOME}"/.dmenu_countdown && \
-    printf "%s" "${tune}" | _decode64 | zcat | tar xf -)
-    tune="${HOME}"/.dmenu_countdown/dmenu-countdown.tone
-else
-    (cd /tmp && printf "%s" "${tune}" | _decode64 | zcat | tar xf -)
-    tune=/tmp/dmenu-countdown.tone
-fi
-chmod +x "${tune}"
-touch /tmp/dmenu-countdown.lock
-
-#convert seconds
-if [ -z "${seconds}" ]; then
-    seconds="$((${hours} * 3600 + ${minutes} * 60))"
-else
-    seconds="$((${hours} * 3600 + ${minutes} * 60 + ${seconds}))"
-fi
-half="$((${seconds}/2))"
-quarter="$((${seconds}/4))"
-almost="$((${seconds}/10))"
-
-seconds_since_1970="$(date '+%s' -d "+ ${seconds} seconds")"
-half_since_1970="$(date    '+%s' -d "+ $(($seconds - $half)) seconds")"
-quarter_since_1970="$(date '+%s' -d "+ $(($seconds - $quarter)) seconds")"
-almost_since_1970="$(date  '+%s' -d "+ $(($seconds - $almost)) seconds")"
-
-_notify "Countdown" "time left: $(_print_time "${seconds}")"
-current_time_in_seconds_since_1970="$(date '+%s')"
-
-#create auto wake up in case the systems gets suspended/hibernated in between
-#wake up 180 seconds (3 minutes) before the alarm triggers
-wakeup_seconds="$((seconds_since_1970 - 180))"
-_wakeup_at "${wakeup_seconds}"
-
-__i="0"; while [ "${seconds_since_1970}" -gt "${current_time_in_seconds_since_1970}" ]; do
-    if [ ! -f /tmp/dmenu-countdown.lock ]; then
-        _notify "Cancel" "countdown canceled!"
-        #cancel auto wakeup
-        _wakeup_at "0"
-        rm -rf "${HOME}"/.dmenu_countdown; rm -rf "${tune}"
-        exit
-    fi
-
-    #reschedule wakeup (60 seconds in the feature) if it gets too close to the
-    #alarm time so the system has enough time to hibernate if that's the case
-    if [ "$(($wakeup_seconds - $current_time_in_seconds_since_1970))" -lt "60" ]; then
-        wakeup_seconds="$(($current_time_in_seconds_since_1970 + 60))"
-        _wakeup_at "${wakeup_seconds}"
-    fi
-
-    if [ "${current_time_in_seconds_since_1970}" -ge "${half_since_1970}" ]; then
-        if [ "${__i}" -eq "0"  ]; then
-            _notify "Countdown" \
-                    "time left: $(_print_time "$(($seconds_since_1970 - $current_time_in_seconds_since_1970))")"
-            __i="$(($__i + 1))"
-        fi
-    fi
-
-    if [ "${current_time_in_seconds_since_1970}" -ge "${quarter_since_1970}" ]; then
-        if [ "${__i}" -eq "1"  ]; then
-            _notify "Countdown" \
-                    "time left: $(_print_time "$(($seconds_since_1970 - $current_time_in_seconds_since_1970))")"
-            __i="$(($__i + 1))"
-        fi
-    fi
-
-    if [ "${current_time_in_seconds_since_1970}" -ge "${almost_since_1970}" ]; then
-        if [ "${__i}" -eq "2"  ]; then
-            _notify "Almost!" \
-                    "time left: $(_print_time "$(($seconds_since_1970 - $current_time_in_seconds_since_1970))")"
-            __i="$(($__i + 1))"
-        fi
-    fi
-
-    sleep 1
-    current_time_in_seconds_since_1970="$(date '+%s')"
-done
-
-#get current audio level
-#orig_audio_level="$(amixer get 'Master',0|egrep -m1 -o '[0-9]{1,3}%')"
-orig_audio_level="$(amixer get 'Master',0 | awk '/Mono:/ {sub(/\[/,""); sub(/\]/,""); print $4}')"
-
-_notify "ALARM" "beep, beep, beep!"
-_play_tune
-
-__i="0"; while :; do
-    if [ ! -f /tmp/dmenu-countdown.lock ]; then
-        _notify "Countdown" "alarm stopped!"
-        _stop_tune
-        amixer -q set Master "${orig_audio_level}"
-        exit
-    fi
-
-    __i="$(($__i + 1))"
-    if [ "$(($__i % 2))" -eq "0" ]; then
-        amixer -q set Master 1+
-    fi
-
-    sleep 1
-done
+_dmenu_countdown
