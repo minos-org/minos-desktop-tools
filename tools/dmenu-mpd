@@ -23,8 +23,6 @@ elif ! command -v "mpc" >/dev/null 2>&1; then
     _die "install 'mpd' to run this program"
 fi
 
-song="$(mkfifo /tmp/fifo; mpc playlist|nl -s ';' > /tmp/fifo & sed -n "s@^ *\([0-9]\+\);$(mpc playlist| ${DMENU} ||printf "%s\\n" ";;;")@\1@p" /tmp/fifo)"
-song="$(printf "%s\\n" "${song}" | head -1)"
-rm -rf /tmp/fifo
-
+song="$(mpc playlist | ${DMENU})" || exit 1
+song="$(mpc playlist | awk '{if($0 == "'"${song}"'") {print NR}}')"
 [ -z "${song}" ] && exit 1 || mpc play "${song}"
