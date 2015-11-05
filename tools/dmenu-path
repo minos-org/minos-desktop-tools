@@ -8,6 +8,7 @@
 #...
 
 cachedir="${XDG_CACHE_HOME:-"$HOME/.cache"}"
+PATH="/bin:/sbin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/usr/bin/X11:/usr/games:$PATH"
 
 if ! command -v "stest" >/dev/null; then
     printf "%s\\n" "install 'stest' to run this program" >&2
