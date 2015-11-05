@@ -4,10 +4,14 @@
 
 @begin{dmenu-countdown}
 dmenu-countdown & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "o@o/"  && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"1"
-dmenu-countdown & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "0:0:1" && xdotool key "Return"
-sleep 1.3 && pgrep -fl countdown.tone
+dmenu-countdown & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "1s" && xdotool key "Return"
+sleep 2 && pgrep -fl "countdown.alarm" >/dev/null 2>&1
 dmenu-countdown & sleep 0.3 && xdotool type "stop" && xdotool key "Return"
-sleep 0.5 && test X"$(pgrep -fl countdown.tone)" = X""
+sleep 0.5 && test X"$(pgrep -fl "countdown.alarm")" = X""
+dmenu-countdown "1"
+sleep 2 && pgrep -fl "countdown.alarm" >/dev/null 2>&1
+dmenu-countdown "stop"
+sleep 0.5 && test X"$(pgrep -fl "countdown.alarm")" = X""
 @end
 
 @begin{dmenu-killall}
@@ -37,12 +41,41 @@ dmenu-path | grep ".*"
 
 @begin{dmenu-run}
 dmenu-run & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool key "Escape" && wait "${pid}"; test X"${?}" = X"1"
-dmenu-run & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "cui" && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"127"
-killall dmenu ;:
 dmenu-run & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "dmenu" && xdotool key "Return"
 sleep 0.2 && pgrep -x dmenu
 killall dmenu ;:
-sleep 0.2 && test X"$(pgrep -x dmenu)" = X""
+sleep 0.2 && test X"$(pgrep -x dmenu)"       = X""
+test X"$(dmenu-run 1)"                       = X"1"
+test X"$(dmenu-run 1 + 1)"                   = X"2"
+test X"$(dmenu-run "1 + 1")"                 = X"2"
+test X"$(dmenu-run "1 +1")"                  = X"2"
+test X"$(dmenu-run "1+1")"                   = X"2"
+test X"$(dmenu-run "1+ 1")"                  = X"2"
+test X"$(dmenu-run "(1+1)")"                 = X"2"
+test X"$(dmenu-run '(4+3)' / 2)"             = X"3.5000"
+test X"$(dmenu-run "(1+2)*2")"               = X"6"
+test X"$(dmenu-run 3*2)"                     = X"6"
+test X"$(dmenu-run "3*2")"                   = X"6"
+test X"$(dmenu-run "3 \* 2")"                = X"6"
+test X"$(dmenu-run 3**2)"                    = X"9"
+test X"$(dmenu-run "3**2")"                  = X"9"
+test X"$(dmenu-run "3 \*\* 2")"              = X"9"
+test X"$(dmenu-run 5/2)"                     = X"2.5000"
+test X"$(dmenu-run "5/2")"                   = X"2.5000"
+test X"$(dmenu-run 5 /2)"                    = X"2.5000"
+test X"$(dmenu-run 5 / 2)"                   = X"2.5000"
+test X"$(dmenu-run "(5/2) + (1/2)")"         = X"3"
+test X"$(dmenu-run "( 5 / 2 ) + ( 1 / 2 )")" = X"3"
+test X"$(dmenu-run "sqrt(9)")"               = X"3"
+test X"$(dmenu-run "sqrt (    9+7  )")"      = X"3"
+test X"$(dmenu-run "int(9.2)")"              = X"9"
+test X"$(dmenu-run "3 + int(2.3)")"          = X"5"
+test X"$(dmenu-run "3 + int (2.3)")"         = X"5"
+test X"$(dmenu-run "3 + int  (2.3)")"        = X"5"
+test X"$(dmenu-run "(factorial(3))")"        = X"6"
+test X"$(dmenu-run "foo+bar")"               = X""
+test X"$(dmenu-run "1 / 0")"                 = X""
+test X"$(dmenu-run --command_not_found_handle "40412cui")" = X""
 @end
 
 @begin{dmenu-session}
@@ -50,8 +83,8 @@ dmenu-session & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool key "Escape
 dmenu-session & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "XaMTWGfu89iQpJk6" && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"1"
 @end
 
-@begin{dmenu-tell}
-dmenu-tell & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool key "Escape" && wait "${pid}"; test X"${?}" = X"1"
+@begin{dmenu-txt2speech}
+dmenu-txt2speech & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool key "Escape" && wait "${pid}"; test X"${?}" = X"1"
 @end
 
 @begin{dmenu-vbox}
@@ -193,39 +226,37 @@ test X"$(movietime --help 2>&1|head -2|tail -1)"                 = X"   movietim
 test X"$(printf "%s" '--help' | movietime 2>&1|head -2|tail -1)" = X"   movietime disables screen blanking and screensaver to allow viewing"
 test X"$(movietime -c 2>&1|head -2|tail -1)"                     = X"   movietime disables screen blanking and screensaver to allow viewing"
 test X"$(printf "%s" '-c'|movietime 2>&1|head -2|tail -1)"       = X"   movietime disables screen blanking and screensaver to allow viewing"
-xset s on; xset +dpms; kill -9 $(pgrep -f "movietime-susp"); rm -rf "${HOME}/.movietime-suspend-inhibit"
-test X"$(movietime 2>&1)" = X"movietime: started"
-sleep 0.5 && pgrep -f "movietime-susp"
-test X"$(movietime 2>&1)" = X"movietime: stopped"
-sleep 0.5 && test X"$(pgrep -f "movietime-susp")" = X""
+xset s on; xset +dpms; kill -9 $(pgrep -f ".movietime.inhibit"); rm -rf "${HOME}/.movietime.inhibit"
+movietime && sleep 0.5 && pgrep -f ".movietime.inhibit"
+movietime && sleep 0.5 && test X"$(pgrep -f ".movietime.inhibit")" = X""
 @end
 
-@begin{multimedia-control}
-multimedia-control;     test X"${?}"                = X"1"
-multimedia-control cui; test X"${?}"                = X"1"
-multimedia-control -h; test X"${?}"                 = X"1"
-printf "%s" '-h' | multimedia-control; test X"${?}" = X"1"
-test X"$(multimedia-control)"                       = X""
-test X"$(multimedia-control 2>&1 | head -1)"                     = X"Usage: multimedia-control play|pause|toggle|next|previous"
-test X"$(multimedia-control cui 2>&1 | head -1)"                 = X"Usage: multimedia-control play|pause|toggle|next|previous"
-test X"$(printf "%s" 'cui' | multimedia-control 2>&1 | head -1)" = X"Usage: multimedia-control play|pause|toggle|next|previous"
+@begin{player-ctrl}
+player-ctrl;     test X"${?}"                = X"1"
+player-ctrl cui; test X"${?}"                = X"1"
+player-ctrl -h; test X"${?}"                 = X"1"
+printf "%s" '-h' | player-ctrl; test X"${?}" = X"1"
+test X"$(player-ctrl)"                       = X""
+test X"$(player-ctrl 2>&1 | head -1)"                     = X"Usage: player-ctrl play|pause|toggle|next|previous"
+test X"$(player-ctrl cui 2>&1 | head -1)"                 = X"Usage: player-ctrl play|pause|toggle|next|previous"
+test X"$(printf "%s" 'cui' | player-ctrl 2>&1 | head -1)" = X"Usage: player-ctrl play|pause|toggle|next|previous"
 @end
 
-@begin{say}
-say; test X"${?}"                                  = X"1"
-say -h; test X"${?}"                               = X"1"
-printf "%s" '-h' | say; test X"${?}"               = X"1"
-say --help ; test X"${?}"                          = X"1"
-printf "%s" '--help' | say; test X"${?}"           = X"1"
-say --cui; test X"${?}"                            = X"1"
-printf "%s" '--cui' | say; test X"${?}"            = X"1"
-test X"$(say 2>&1|head -1)"                        = X"Usage: say [-sl] phrase"
-test X"$(say -h 2>&1|head -1)"                     = X"Usage: say [-sl] phrase"
-test X"$(printf "%s" '-h' | say 2>&1|head -1)"     = X"Usage: say [-sl] phrase"
-test X"$(say --help 2>&1|head -1)"                 = X"Usage: say [-sl] phrase"
-test X"$(printf "%s" '--help' | say 2>&1|head -1)" = X"Usage: say [-sl] phrase"
-test X"$(say --cui 2>&1|head -1)"                  = X"say: unrecognized option \`--cui'"
-test X"$(printf "%s" '--cui' | say 2>&1|head -1)"  = X"say: unrecognized option \`--cui'"
+@begin{txt2speech}
+txt2speech; test X"${?}"                                  = X"1"
+txt2speech -h; test X"${?}"                               = X"1"
+printf "%s" '-h' | txt2speech; test X"${?}"               = X"1"
+txt2speech --help ; test X"${?}"                          = X"1"
+printf "%s" '--help' | txt2speech; test X"${?}"           = X"1"
+txt2speech --cui; test X"${?}"                            = X"1"
+printf "%s" '--cui' | txt2speech; test X"${?}"            = X"1"
+test X"$(txt2speech 2>&1|head -1)"                        = X"Usage: txt2speech [-sl] phrase"
+test X"$(txt2speech -h 2>&1|head -1)"                     = X"Usage: txt2speech [-sl] phrase"
+test X"$(printf "%s" '-h' | txt2speech 2>&1|head -1)"     = X"Usage: txt2speech [-sl] phrase"
+test X"$(txt2speech --help 2>&1|head -1)"                 = X"Usage: txt2speech [-sl] phrase"
+test X"$(printf "%s" '--help' | txt2speech 2>&1|head -1)" = X"Usage: txt2speech [-sl] phrase"
+test X"$(txt2speech --cui 2>&1|head -1)"                  = X"txt2speech: unrecognized option \`--cui'"
+test X"$(printf "%s" '--cui' | txt2speech 2>&1|head -1)"  = X"txt2speech: unrecognized option \`--cui'"
 @end
 
 @begin{screenshot}
