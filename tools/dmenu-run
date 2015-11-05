@@ -5,40 +5,160 @@
 #example: dmenu-run
 #a gui menu appears asking which program to launch
 
-#================
-#possible entries
-#================
-
-#firefox                #launch firefox
-#firefox google.com     #launch firefox and open google.com
-#[man|info] ls          #open the ls manual in a terminal emulator
-#[u]ssh user@domain.tls #open a ssh session in a terminal emulator
-#vi[m] file             #open file in vim in a terminal emulator
-#htop:t                 #open htop in a terminal emulator
-#htop:term              #open htop in a terminal emulator
-#htop:terminal          #open htop in a terminal emulator
-#http://google.com      #open url in the default browser
-#/tmp/foobar.png        #open image in the default image viewer
-#files/urls/paths are open using
-    #1. xdg-open
-    #2. minos default app
-    #3. debian/ubuntu default app
-
 #looks better with a xft powered dmenu:
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+
+#TODO 04-11-2015 14:06 >> add plugin support ":plugin"
+#could replace hardcoded weather, money exchange and search functions
+#possible implementation:
+#cat ~/.dmenu-run.conf
+#   google='xdg-open http://www.google.com/search?q='
+#   magic_word='cmd'
+#   ...
 DMENU="dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #7541b9"
-#DMENU="dmenu -p > -i -fn Likhan-9 -nb #000000 -nf #ffffff -sb #000000 -sf #7541b9"
-#DMENU="dmenu -p > -i -fn Sawasdee-9 -nb #000000 -nf #ffffff -sb #000000 -sf #7541b9"
-#DMENU="dmenu -p > -i -fn TlwgTypewriter-9 -nb #000000 -nf #ffffff -sb #000000 -sf #7541b9"
 
 cli_cmds="man info vi vim ussh ssh htop top mutt tmux"
 terminal_emulators="urxvt rxvt gnome-terminal konsole xterm"
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
-_die()
-{
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [args ...]" >&2
+    printf "%s\\n" "Dmenu based launcher." >&2
+    printf "%s\\n" >&2
+    printf "%s\\n" "Possible entries:" >&2
+    printf "%s\\n" >&2
+    printf "%s\\n" "  firefox                    => launch firefox" >&2
+    printf "%s\\n" "  firefox wikipedia.org      => launch firefox and open wikipedia.org" >&2
+    printf "%s\\n" "  [man|info] ls              => open ls manual in a terminal emulator" >&2
+    printf "%s\\n" "  [ussh|ssh] user@domain.tls => start ssh session in a terminal emulator" >&2
+    printf "%s\\n" "  vim[m] /path/file          => open file using vim in a terminal emulator" >&2
+    printf "%s\\n" "  dmenu:g[oogle]             => search 'dmenu' in google using the default web browser" >&2
+    printf "%s\\n" "  dmenu:b[ing]               => search 'dmenu' in bing using the default web browser" >&2
+    printf "%s\\n" "  htop:t[erminal]            => open htop in a terminal emulator" >&2
+    printf "%s\\n" "  http://wikipedia.org       => open url in the default browser" >&2
+    printf "%s\\n" "  /path/image.png            => open image in the default image viewer" >&2
+    printf "%s\\n" "  3*5                        => execute and display arithmetic operation" >&2
+    printf "%s\\n" "  15 usd to mxn              => execute and display money currency" >&2
+    printf "%s\\n" "  :weather                   => show current weather" >&2
+    printf "%s\\n" >&2
+    exit 1
+}
+
+_die() {
     [ -z "${1}" ] && _die_msg="dmenu" || _die_msg="${1}"
     printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | ${DMENU}
     exit 1
+}
+
+_notify()
+{   #output messages through the notification system, prints to
+    #stdout in the worst escenario
+    [ -z "${1}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}" "${3}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                DISPLAY=:0 gxmessage "${font:+-fn "$font"}" "${1}" "ok"
+            else
+                font="fixed"
+                DISPLAY=:0 xmessage "${font:+-fn "$font"}" "${1}" "ok"
+            fi
+        fi
+        case "${3}" in
+            *clipboard*)
+                printf "%s\\n" "${2}" | xclip -selection clipboard 2>/dev/null
+                printf "%s\\n" "${2}" | xsel -bi 2>/dev/null
+                printf "%s\\n" "${2}" | pbcopy 2>/dev/null
+                ;;
+        esac
+    else
+        printf "%s\\n" "${2}"
+    fi
+}
+
+_cconverter() {
+    #TODO 04-11-2015 12:53 >> add more currency apis
+    [ -z "${1}" ] && return 1
+
+    _cconverter_google() {
+        wget --tries=1 --timeout=2 -q -O- \
+        "http://www.google.com/finance/converter?a=${1}&from=${2}&to=${3}" \
+        2>/dev/null | sed '/res/!d;s/<[^>]*>//g'
+    }
+
+    _cconverter_yahoo() {
+        _cconverter__yahoo_rate="$(wget --tries=1 --timeout=2 -q -O- \
+        "http://download.finance.yahoo.com/d/quotes.csv?s=${2}${3}=X&f=b&e=.csv" 2>/dev/null)"
+        if [ -z "${_cconverter__yahoo_rate}" ] || [ "${_cconverter__yahoo_rate}" = "N/A"  ]; then
+            return 1
+        fi
+        _cconverter__yahoo_result="$(awk "BEGIN {printf(\"%.4f\", ${1}*${_cconverter__yahoo_rate}); exit}")"
+        printf "%s" "${1} ${2} = ${_cconverter__yahoo_result%.0000} ${3}"
+    }
+
+    _cconverter_webservicex() {
+        _cconverter__webservicex_rate="$(wget --tries=1 --timeout=2 -q -O- \
+        "http://www.webservicex.net/CurrencyConvertor.asmx/ConversionRate?FromCurrency=${2}&ToCurrency=${3}" | \
+        awk 'END {gsub(/<[^>]*>/, "");print $0}')"
+        [ -z "${_cconverter__webservicex_rate}" ] && return 1
+        _cconverter__webservicex_result="$(awk "BEGIN {printf(\"%.4f\", ${1}*${_cconverter__webservicex_rate}); exit}")"
+        printf "%s" "${1} ${2} = ${_cconverter__webservicex_result%.0000} ${3}"
+    }
+
+    for _cconverter__1st_word; do break; done
+    case "${_cconverter__1st_word}" in #if invalid input use 1 as base
+        *[!0-9.,]*) _cconverter__input="$(printf "%s" "${@}" | sed "s:${_cconverter__1st_word}:1:")" ;;
+        *) _cconverter__input="${@}" ;;
+    esac
+
+    _cconverter__input="$(printf "%s" "${_cconverter__input}" | \
+        tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' | sed 's:TO::')"
+    for api in google yahoo webservicex; do
+        if [ -z "${_cconverter__result}" ]; then
+           _cconverter__result="$(_cconverter_"${api}" ${_cconverter__input})"
+       else
+           break
+       fi
+    done
+
+    printf "%s" "${_cconverter__result}"
+}
+
+_weather() {
+    command -v "wget" >/dev/null 2>&1 || return 1
+    #TODO 04-11-2015 12:53 >> add more weather apis
+    _weather_bing() {
+        _weather__bing_awk_prog='/<div class="b_focusTextLarge">/ {
+            gsub(/<[^>]*>/, " "); gsub(/&#176;/, "°");
+            gsub(/&#183;|<.*$|^[ \t]+|[ \t]+$/, ""); gsub(/ F /, "°F");
+            gsub(/ C /, "°C"); gsub(/[ \t]+/, " "); print $0}'
+        if command -v "perl" >/dev/null 2>&1; then
+            wget --tries=1 --timeout=3 -q -O- -U ''  \
+                'http://bing.com/search?q=weather' | \
+                awk "${_weather__bing_awk_prog}"   | \
+                perl -MHTML::Entities -pe 'decode_entities($_);'
+        else
+            wget --tries=1 --timeout=3 -q -O- -U ''  \
+                'http://bing.com/search?q=weather' | \
+                awk "${_weather__bing_awk_prog}"
+        fi
+    }
+
+    _weather_ask() {
+        _weather__ask_awk_prog='/<span class="sa_current_reading">/ || /, DIF / {
+            gsub(/<[^>]*>|^[ \t]+|[ \t]+$/, ""); gsub(/&#186;/, "°");
+            printf("%s / ", $0) }'
+        _weather__ask_result="$(wget --tries=1 --timeout=3 -q -O- -U '' \
+            'http://www.ask.com/web?q=weather' | awk "${_weather__ask_awk_prog}")"
+        printf "%s" "${_weather__ask_result% / }"
+    }
+
+    for api in bing ask; do
+        [ -z "${_weather__result}" ] && _weather__result="$(_weather_"${api}")" || break
+    done
+
+    printf "%s" "${_weather__result}"
 }
 
 _get_terminal_vars() {
@@ -69,6 +189,7 @@ _exec() {
     else
         exec "${@}"
     fi
+    exit "${?}"
 }
 
 _open() {
@@ -85,7 +206,7 @@ _open() {
                 _exec "${default_browser}" "${@}"
                 ;;
             /*|./)
-                case "$(file --brief --mime-type "${cmd_1st_word}")" in
+                case "$(file --brief --mime-type "${_1st_word}")" in
                     text/*)
                         if ! command -v "${EDITOR}" >/dev/null 2>&1; then
                             EDITOR="editor"
@@ -134,43 +255,152 @@ _open() {
     fi
 }
 
-if ! command -v "dmenu" >/dev/null 2>&1; then
-    printf "%s\\n" "install 'dmenu' to run this program" >&2
-    exit 1
-elif ! command -v "dmenu-path" >/dev/null 2>&1; then
-    _die "install 'dmenu-path' to run this program"
+_encode_search()
+{
+    printf "%s" "${@}" | sed 's:[\t ]\+:%20:g'
+}
+
+_dmenu_run() {
+    [ -z "${1}" ] && return 1
+    _cmd="${@}"
+    _1st_word="${_cmd%% *}"; _1st_word="${_1st_word%:*}"
+    _cmd_words_len=0; for word in ${cmd}; do _cmd_words_len="$((_cmd_words_len+1))"; done
+    case "${_cmd}" in
+        *:|*:t|*:te|*:ter|*:term|*:termi|*:termin|*:termina|*:terminal)
+            _get_terminal_vars
+            _cmd="${_cmd%:*}"
+            if [ -z "${_cmd}" ]; then
+                _exec "${default_terminal}"
+            else
+                case "${cli_cmds}" in
+                    *${_1st_word}*) exec ${default_terminal} -title "${cmd}" \
+                        -e ${SHELL} -c "${cmd} || { echo 'Press [enter] to continue'; read junk; }" ;;
+                    *) exec ${default_terminal} -title "${cmd}" -e ${SHELL} \
+                        -c "${cmd}; echo 'Press [enter] to continue'; read junk" ;;
+                esac
+                exit
+            fi ;;
+        *:g|*:go|*:goo|*:goog|*:googl|*:google)
+                search="$(_encode_search "${_cmd%:*}")"
+                _dmenu_run "http://www.google.com/search?q=${search}:open"
+            ;;
+        *:b|*:bi|*:bin|*:bing)
+                search="$(_encode_search "${_cmd%:*}")"
+                _dmenu_run "http://bing.com/search?q=${search}:open"
+            ;;
+        #execute and open aren't supposed to be used by users, they're declared
+        #for internal redirections
+        *:execute) _cmd="${_cmd%:*}"    && _exec "${_cmd}" ;;
+        *:open)    _cmd="${_cmd%:*}"    && _open "${_cmd}" ;;
+        "o "*)     _cmd="${_cmd#o }"    && _dmenu_run "${_cmd}:open" ;;
+        "open "*)  _cmd="${_cmd#open }" && _dmenu_run "${_cmd}:open" ;;
+        :w|:we|:wea|:weat|:weath|:weathe|:weather|weather)
+            if [ -x "$(command -v "weather" 2>/dev/null)" ]; then
+                [ -z "${_not_found_handle}" ] && exec weather -q || \
+                    exec weather
+            else
+                _result="$(_weather)"
+                if [ -z "${_result}" ]; then
+                   [ -z "${_not_found_handle}" ] && _result="Weather api timeout" || return "${?}"
+                fi
+                _notify "${_result}" "${_result}"
+            fi
+            ;;
+        #money currency converter
+        *" "[tT][oO]" "*) [ X"${_cmd_words_len}" = X"4" ] || _dmenu_run "${_cmd}:execute"
+            if [ -x "$(command -v "cconverter" 2>/dev/null)" ]; then
+                [ -z "${_not_found_handle}" ] && exec cconverter -q "${_cmd}" || \
+                    exec cconverter "${_cmd}"
+            else
+                _result="$(_cconverter ${_cmd})"
+                if [ -z "${_result}" ]; then
+                   [ -z "${_not_found_handle}" ] && _result="Money currency api timeout" || return "${?}"
+                else
+                    _clipboard_text="Copied to clipboard!"
+                fi
+                _notify "${_result}" "${_result}" "${_clipboard_text}"
+            fi
+            ;;
+        #arithmetic operations, if the first character of cmd is a number or -,+,(
+        #or a math function()
+        [0-9+-\(]*|[a-z\(]*|[a-z]*" (")
+                if [ -x "$(command -v "${_1st_word}" 2>/dev/null)" ]; then
+                    _dmenu_run "${_cmd}:execute"
+                else
+                    if awk 'BEGIN {exit}' >/dev/null 2>&1; then
+                        for _cmd__word in ${_cmd}; do
+                            #only allow portable awk functions
+                            case "${_cmd__word}" in
+                                *[!0-9.-*/%+\(\)]*)
+                                    case "${_cmd__word}" in
+                                        int\(*|int|sqrt\(*|sqrt|exp\(*|exp|log\(*|log|sin\(*|sin) continue ;;
+                                        cos\(*|cos|atan2\(*|atan2|rand\(*|rand|srand\(*|srand)    continue ;;
+                                    esac
+                                    _result="invalid"; break ;;
+                            esac
+                        done
+
+                        [ X"${_result}" = X"invalid" ] && _result="" || \
+                            _result="$(awk "BEGIN {printf(\"%.4f\n\", $*); exit}" 2>/dev/null)"
+                    fi
+
+                    if [ -z "${_result}" ]; then
+                        if [ -x "$(command -v python 2>/dev/null)" ]; then
+                            _result="$(python -c "from __future__ import division; from math import *; print($*)" 2>/dev/null)"
+                        fi
+                    fi
+
+                    if [ -z "${_result}" ]; then
+                        [ -z "${_not_found_handle}" ] && { $_cmd; exit "${?}"; } || return "${?}"
+                    fi
+                    _notify "${_cmd} = ${_result%.0000}" "${_result%.0000}" "Copied to clipboard!"
+                fi
+            ;;
+        *)  case "${cli_cmds}" in
+                *${_1st_word}*) _get_terminal_vars
+                    exec ${default_terminal} -title "${cmd}" -e ${SHELL} \
+                    -c "${cmd} || { echo 'Press [enter] to continue'; read junk; }" ;;
+                *)  if [ -x "$(command -v "${_1st_word}" 2>/dev/null)" ]; then
+                        _exec ${cmd}
+                    else
+                        _open ${cmd}
+                    fi ;;
+            esac ;;
+    esac
+}
+
+if [ ! -t 0 ]; then
+    #add input comming from pipe or file to $@
+    set -- "${@}" $(cat)
 fi
 
-cmd="$(dmenu-path | ${DMENU})" || exit "${?}"
-cmd="$(printf "%s" "${cmd}" | sed "s:\$HOME:${HOME}:g;s:~/:${HOME}/:;s:\"::g;s:\'::g;")"
-cmd_1st_word="${cmd%% *}"; cmd_1st_word="${cmd_1st_word%:*}"
-words_len=0; for word in ${cmd}; do words_len="$((words_len+1))"; done
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage ;;
+        #dmenu-run can be used in the command_not_found_handle function
+        #at /etc/bash.bashrc to provide math, conversions, weather
+        #and other operations on invalid commands
 
-case "${cmd}" in
-    "o "*)    cmd="${cmd#o }"    && _open ${cmd} ;;
-    "open "*) cmd="${cmd#open }" && _open ${cmd} ;;
-    *:|*:t|*:te|*:ter|*:term|*:termi|*:termin|*:termina|*:terminal)
-        _get_terminal_vars
-        cmd="${cmd%:*}"
-        if [ -z "${cmd}" ]; then
-            _exec "${default_terminal}"
-        else
-            case "${cli_cmds}" in
-                *${cmd_1st_word}*) exec ${default_terminal} -title "${cmd}" \
-                    -e ${SHELL} -c "${cmd} || { echo 'Press [enter] to continue'; read junk; }" ;;
-                *) exec ${default_terminal} -title "${cmd}" -e ${SHELL} \
-                    -c "${cmd}; echo 'Press [enter] to continue'; read junk" ;;
-            esac
-            exit
-        fi ;;
-    *)  case "${cli_cmds}" in
-            *${cmd_1st_word}*) _get_terminal_vars
-                exec ${default_terminal} -title "${cmd}" -e ${SHELL} \
-                -c "${cmd} || { echo 'Press [enter] to continue'; read junk; }" ;;
-            *)  if command -v "${cmd_1st_word}" >/dev/null 2>&1; then
-                    _exec ${cmd}
-                else
-                    _open ${cmd}
-                fi ;;
-        esac ;;
-esac
+        #/etc/bash.bashrc
+        #function command_not_found_handle {
+            #if [ -x "$(command -v dmenu-run 2>/dev/null)" ]; then
+                #dmenu-run --command_not_found_handle $@ && return 0
+            #fi
+        --command_not_found_handle) _not_found_handle="1";  shift ;;
+    esac
+done
+
+if [ -z "${1}" ]; then
+    if ! command -v "dmenu" >/dev/null 2>&1; then
+        printf "%s\\n" "${progname}: install 'dmenu' to run this program" >&2
+        exit 1
+    elif ! command -v "dmenu-path" >/dev/null 2>&1; then
+        _die "install 'dmenu-path' to run this program"
+    fi
+    cmd="$(dmenu-path | ${DMENU})" || exit "${?}"
+else
+    cmd="${@}"
+fi
+
+cmd="$(printf "%s" "${cmd}" | sed "s:\$HOME:${HOME}:g;s:~/:${HOME}/:;s:\"::g;s:\'::g;s:\\\::g;s:[\t ]\+: :g;")"
+_dmenu_run "${cmd}"
