@@ -67,9 +67,9 @@ _notify()
         fi
         case "${3}" in
             *clipboard*)
-                printf "%s\\n" "${2}" | xclip -selection clipboard 2>/dev/null
-                printf "%s\\n" "${2}" | xsel -bi 2>/dev/null
-                printf "%s\\n" "${2}" | pbcopy 2>/dev/null
+                printf "%s" "${2}" | xclip -selection clipboard 2>/dev/null
+                printf "%s" "${2}" | xsel -bi 2>/dev/null
+                printf "%s" "${2}" | pbcopy 2>/dev/null
                 ;;
         esac
     else
@@ -195,7 +195,7 @@ _exec() {
 _open() {
     [ -z "${1}" ] && return 1
     if command -v "xdg-open" >/dev/null 2>&1; then
-        _exec xdg-open "${@}"
+        xdg-open "${@}" 2>/dev/null
     else
         case "${cmd}" in
             http://*|https://*|ftp://*)
@@ -288,12 +288,9 @@ _dmenu_run() {
                 search="$(_encode_search "${_cmd%:*}")"
                 _dmenu_run "http://bing.com/search?q=${search}:open"
             ;;
-        #execute and open aren't supposed to be used by users, they're declared
-        #for internal redirections
-        *:execute) _cmd="${_cmd%:*}"    && _exec "${_cmd}" ;;
-        *:open)    _cmd="${_cmd%:*}"    && _open "${_cmd}" ;;
-        "o "*)     _cmd="${_cmd#o }"    && _dmenu_run "${_cmd}:open" ;;
-        "open "*)  _cmd="${_cmd#open }" && _dmenu_run "${_cmd}:open" ;;
+        *:o|*:op|*:ope|*:open) _cmd="${_cmd%:*}" && _open "${_cmd}" ;;
+        "o "*)     _cmd="${_cmd#o }"    && _open "${_cmd}:open" ;;
+        "open "*)  _cmd="${_cmd#open }" && _open "${_cmd}:open" ;;
         :w|:we|:wea|:weat|:weath|:weathe|:weather|weather)
             if [ -x "$(command -v "weather" 2>/dev/null)" ]; then
                 [ -z "${_not_found_handle}" ] && exec weather -q || \
@@ -306,6 +303,9 @@ _dmenu_run() {
                 _notify "${_result}" "${_result}"
             fi
             ;;
+        #execute isn't suppose to be used by users, it's declared
+        #for internal redirection
+        *:execute) _cmd="${_cmd%:*}" && _exec "${_cmd}" ;;
         #money currency converter
         *" "[tT][oO]" "*) [ X"${_cmd_words_len}" = X"4" ] || _dmenu_run "${_cmd}:execute"
             if [ -x "$(command -v "cconverter" 2>/dev/null)" ]; then
@@ -323,7 +323,7 @@ _dmenu_run() {
             ;;
         #arithmetic operations, if the first character of cmd is a number or -,+,(
         #or a math function()
-        [0-9+-\(]*|[a-z\(]*|[a-z]*" (")
+        [0-9+-\(]*|\(*|[a-z]*\(*|[a-z]*" (")
                 if [ -x "$(command -v "${_1st_word}" 2>/dev/null)" ]; then
                     _dmenu_run "${_cmd}:execute"
                 else
@@ -361,9 +361,9 @@ _dmenu_run() {
                     exec ${default_terminal} -title "${cmd}" -e ${SHELL} \
                     -c "${cmd} || { echo 'Press [enter] to continue'; read junk; }" ;;
                 *)  if [ -x "$(command -v "${_1st_word}" 2>/dev/null)" ]; then
-                        _exec ${cmd}
+                        _exec ${_cmd}
                     else
-                        _open ${cmd}
+                        _open ${_cmd}
                     fi ;;
             esac ;;
     esac

@@ -45,6 +45,7 @@ dmenu-run & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "dmenu" &&
 sleep 0.2 && pgrep -x dmenu
 killall dmenu ;:
 sleep 0.2 && test X"$(pgrep -x dmenu)"       = X""
+dmenu-run ñs; test X"${?}"                   = X"2"
 test X"$(dmenu-run 1)"                       = X"1"
 test X"$(dmenu-run 1 + 1)"                   = X"2"
 test X"$(dmenu-run "1 + 1")"                 = X"2"
@@ -67,7 +68,7 @@ test X"$(dmenu-run 5 / 2)"                   = X"2.5000"
 test X"$(dmenu-run "(5/2) + (1/2)")"         = X"3"
 test X"$(dmenu-run "( 5 / 2 ) + ( 1 / 2 )")" = X"3"
 test X"$(dmenu-run "sqrt(9)")"               = X"3"
-test X"$(dmenu-run "sqrt (    9+7  )")"      = X"3"
+test X"$(dmenu-run "sqrt (    9+7  )")"      = X"4"
 test X"$(dmenu-run "int(9.2)")"              = X"9"
 test X"$(dmenu-run "3 + int(2.3)")"          = X"5"
 test X"$(dmenu-run "3 + int (2.3)")"         = X"5"
