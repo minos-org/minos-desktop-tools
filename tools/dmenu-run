@@ -50,8 +50,8 @@ _die() {
     exit 1
 }
 
-_notify()
-{   #output messages through the notification system, prints to
+_notify() {
+    #output messages through the notification system, prints to
     #stdout in the worst escenario
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
@@ -65,16 +65,16 @@ _notify()
                 DISPLAY=:0 xmessage "${font:+-fn "$font"}" "${1}" "ok"
             fi
         fi
-        case "${3}" in
-            *clipboard*)
-                printf "%s" "${2}" | xclip -selection clipboard 2>/dev/null
-                printf "%s" "${2}" | xsel -bi 2>/dev/null
-                printf "%s" "${2}" | pbcopy 2>/dev/null
-                ;;
-        esac
     else
         printf "%s\\n" "${2}"
     fi
+    case "${3}" in
+        *clipboard*)
+            printf "%s" "${2}" | xclip -selection clipboard -i >/dev/null 2>&1 || \
+            printf "%s" "${2}" | xsel -bi 2>/dev/null || \
+            printf "%s" "${2}" | pbcopy 2>/dev/null
+            ;;
+    esac
 }
 
 _cconverter() {
@@ -197,7 +197,7 @@ _open() {
     if command -v "xdg-open" >/dev/null 2>&1; then
         xdg-open "${@}" 2>/dev/null
     else
-        case "${cmd}" in
+        case "${1}" in
             http://*|https://*|ftp://*)
                 default_browser="$(minos-config m-browser 2>/dev/null)"
                 if ! command -v "${default_browser}" >/dev/null 2>&1; then
@@ -262,9 +262,8 @@ _encode_search()
 
 _dmenu_run() {
     [ -z "${1}" ] && return 1
-    _cmd="${@}"
-    _1st_word="${_cmd%% *}"; _1st_word="${_1st_word%:*}"
-    _cmd_words_len=0; for word in ${cmd}; do _cmd_words_len="$((_cmd_words_len+1))"; done
+    _cmd="${@}"; _1st_word="${_cmd%% *}"; _1st_word="${_1st_word%:*}"
+    _cmd_words_len=0; for word in ${_cmd}; do _cmd_words_len="$((_cmd_words_len+1))"; done
     case "${_cmd}" in
         *:|*:t|*:te|*:ter|*:term|*:termi|*:termin|*:termina|*:terminal)
             _get_terminal_vars
@@ -273,10 +272,10 @@ _dmenu_run() {
                 _exec "${default_terminal}"
             else
                 case "${cli_cmds}" in
-                    *${_1st_word}*) exec ${default_terminal} -title "${cmd}" \
-                        -e ${SHELL} -c "${cmd} || { echo 'Press [enter] to continue'; read junk; }" ;;
-                    *) exec ${default_terminal} -title "${cmd}" -e ${SHELL} \
-                        -c "${cmd}; echo 'Press [enter] to continue'; read junk" ;;
+                    *${_1st_word}*) exec ${default_terminal} -title "${_cmd}" \
+                        -e ${SHELL} -c "${_cmd} || { echo 'Press [enter] to continue'; read junk; }" ;;
+                    *) exec ${default_terminal} -title "${_cmd}" -e ${SHELL} \
+                        -c "${_cmd}; echo 'Press [enter] to continue'; read junk" ;;
                 esac
                 exit
             fi ;;
@@ -356,16 +355,19 @@ _dmenu_run() {
                     _notify "${_cmd} = ${_result%.0000}" "${_result%.0000}" "Copied to clipboard!"
                 fi
             ;;
-        *)  case "${cli_cmds}" in
-                *${_1st_word}*) _get_terminal_vars
-                    exec ${default_terminal} -title "${cmd}" -e ${SHELL} \
-                    -c "${cmd} || { echo 'Press [enter] to continue'; read junk; }" ;;
-                *)  if [ -x "$(command -v "${_1st_word}" 2>/dev/null)" ]; then
-                        _exec ${_cmd}
-                    else
-                        _open ${_cmd}
-                    fi ;;
-            esac ;;
+        *) for i in $cli_cmds; do
+               if [ X"${i}" = X"${_1st_word}" ]; then
+                    _get_terminal_vars
+                    exec ${default_terminal} -title "${_cmd}" -e ${SHELL} \
+                    -c "${_cmd} || { echo 'Press [enter] to continue'; read junk; }"
+               fi
+           done; unset i
+           if [ -x "$(command -v "${_1st_word}" 2>/dev/null)" ]; then
+               _exec ${_cmd}
+           else
+               _open ${_cmd}
+           fi
+            ;;
     esac
 }
 
