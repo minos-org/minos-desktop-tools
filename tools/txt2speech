@@ -1,12 +1,33 @@
 #!/bin/sh
-#description: txt2speech, requires internet, uses google voice
+#description: txt2speech, text to speech
 #usage: txt2speech [options] phrase
 
 #example: txt2speech -en "hello world"
 #audio plays saying "hello world"
 
-_notify()
-{
+SPEECH_SYNTHESIZERS="google voicerss espeak"
+SPEECH_SYNTHESIZERS_MEDIUM="voicerss google espeak"
+SPEECH_SYNTHESIZERS_BIG="voicerss espeak"
+SPEECH_SYNTHESIZERS_HUGE="espeak voicerss"
+VOICERSS_TK='e7f014e16bcb48579bb1dbcd70149114'
+
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [options] [-sl] phrase"
+    printf "%s\\n" "txt2speech."
+    printf "\\n"
+    printf "%s\\n" "  sl   source language ('en' by default)"
+    printf "\\n"
+    printf "%s\\n" "  -s, --synth           select synthetizer"
+    printf "%s\\n" "  -l, --list-synth      list available synthetizers"
+    printf "%b\\n" "  -f, --file [file]     read from file"
+    printf "%b\\n" "  -o, --output [file]   write to file"
+    printf "%b\\n" "  -c, --clean-cache     remove temporal files" >&2
+    printf "%s\\n" "  -h, --help            show this help message and exit"
+}
+
+_notify() {
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
@@ -28,33 +49,199 @@ _notify()
     fi
 }
 
-_usage()
-{
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl] phrase" >&2
-    printf "%s\\n" "txt2speech." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  sl   source language ('en' by default)" >&2
-    exit 1
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage; >&2; exit 1
 }
 
-_txt2speech()
-{
+_cat() {
+    case "${2}" in
+        -) cat "${1}" ;;
+        *) cat "${1}" > "${2}" ;;
+    esac
+}
+
+_check_synthesizer() {
+    if [ -z "${1}" ]; then
+        printf "%s\\n" "${progname}: available speech synthesizers are" >&2
+        exec "${0}" --list-synthesizer >&2
+    else
+        printf "%s\\n" "${SPEECH_SYNTHESIZERS}" | tr ' ' '\n' |  \
+            grep "^${1}$" >/dev/null ||         { printf "%s\\n" \
+            "${progname}: '${1}' is not a recognized speech synthesizer" >&2
+             exit 1; }
+    fi
+}
+
+_txt2speech() {
+    _txt2speech__google() {
+        _txt2speech__google_fetch() {
+            #strip empty spaces from beginning/end
+            _tgfetch__buffer="$(printf "%s" "${1}" | \
+                awk '{gsub(/^[ \t]+|[ \t]+$/, ""); print}')"
+            #http://stackoverflow.com/questions/296536/urlencode-from-a-bash-script
+            _tgfetch__buffer_encoded="$(printf "%b" "${_tgfetch__buffer}" | \
+                xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
+
+            #https://github.com/zaf/asterisk-googletts
+            _tgfetch__url="http://translate.google.com/translate_tts?ie=UTF-8"
+            _tgfetch__url="${_tgfetch__url}&q=${_tgfetch__buffer_encoded}"
+            _tgfetch__url="${_tgfetch__url}&tl=${SL}&total=1&idx=0"
+            _tgfetch__url="${_tgfetch__url}&textlen=${#_tgfetch__buffer}"
+            _tgfetch__url="${_tgfetch__url}&client=t"
+            _tgfetch__url="${_tgfetch__url}&tk=$(awk -v min=0 -v max=100000 \
+                'BEGIN{srand(); print int(min+rand()*(max-min+1))}')"
+            _tgfetch__url="${_tgfetch__url}|$(awk -v min=0 -v max=100000 \
+                'BEGIN{srand(); print int(min+rand()*(max-min+1))}')"
+
+            _tgfetch__ua="User-Agent: Mozilla/5.0 (X11; Linux x86_64)"
+            _tgfetch__ua="${_tgfetch__ua} AppleWebKit/537.36"
+            _tgfetch__ua="${_tgfetch__ua} (KHTML, like Gecko)"
+            _tgfetch__ua="${_tgfetch__ua} Chrome/45.0.2454.101"
+            _tgfetch__ua="${_tgfetch__ua} Safari/537.36"
+
+            wget -q -O- "${_tgfetch__url}" --header='Accept: */*' \
+            --header='Accept-Encoding: identity;q=1, *;q=0'    \
+            --header='Accept-Language: en-US,en;q=0.5' --header='DNT: 1' \
+            --header='Range: bytes=0-' \
+            --header='Referer: http://translate.google.com' \
+            --header="${_tgfetch__ua}" > "${2}" || { rm -rf "${2}"; return 1; }
+        }
+
+        i="0"; _txt2speech__buffer=""; for word; do
+            if [ "$((${#_txt2speech__buffer} + ${#word}))" -gt "99" ]; then
+                i="$(($i + 1))"
+                _txt2speech__google_fetch "${_txt2speech__buffer}" \
+                    "${_txt2speech__tmp_dir}/$(printf "%05d.mp3" "${i}")" && \
+                    _txt2speech__buffer="${word}" || return 1
+            else
+                _txt2speech__buffer="${_txt2speech__buffer} ${word}"
+            fi
+        done
+
+        if [ -n "${_txt2speech__buffer}" ]; then
+            i="$(($i + 1))"
+            _txt2speech__google_fetch "${_txt2speech__buffer}" \
+                "${_txt2speech__tmp_dir}/$(printf "%05d.mp3" "${i}")" || return 1
+        fi
+
+        cat "${_txt2speech__tmp_dir}"/*.mp3 > "${_txt2speech__tmp_dir}"/a.mp3 \
+            2>/dev/null && _txt2speech "${_txt2speech__tmp_dir}"/a.mp3 || {   \
+            rm -rf "${_txt2speech__tmp_dir}"/a.mp3; return 1; }
+    }
+
+    _txt2speech__voicerss() {
+        _txt2speech__voicerss_fetch() {
+            #strip empty spaces from beginning/end
+            _tvfetch__buffer="$(printf "%s" "${1}" | \
+                awk '{gsub(/^[ \t]+|[ \t]+$/, ""); print}')"
+            #http://stackoverflow.com/questions/296536/urlencode-from-a-bash-script
+            _tvfetch__buffer_encoded="$(printf "%b" "${_tvfetch__buffer}" | \
+                xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
+
+            case "${SL}" in
+                 ca) _tvfetch__SL="ca-es" ;;   zh) _tvfetch__SL="zh-cn" ;;
+                 da) _tvfetch__SL="da-dk" ;;   nl) _tvfetch__SL="nl-nl" ;;
+                 en) _tvfetch__SL="en-us" ;; 'fi') _tvfetch__SL="fi-fi" ;;
+                 fr) _tvfetch__SL="fr-fr" ;;   de) _tvfetch__SL="de-de" ;;
+                 it) _tvfetch__SL="it-it" ;;   ja) _tvfetch__SL="ja-jp" ;;
+                 ko) _tvfetch__SL="ko-kr" ;;   nb) _tvfetch__SL="nb-no" ;;
+                 pl) _tvfetch__SL="pl-pl" ;;   pt) _tvfetch__SL="pt-br" ;;
+                 ru) _tvfetch__SL="ru-ru" ;;   es) _tvfetch__SL="es-mx" ;;
+                 sv) _tvfetch__SL="sv-se" ;;   *)  _tvfetch__SL="${SL}" ;;
+            esac
+
+            _tvfetch__url="http://api.voicerss.org/"
+
+            _tvfetch__post="key=${VOICERSS_TK}"
+            _tvfetch__post="${_tvfetch__post}&src=${_tvfetch__buffer_encoded}"
+            _tvfetch__post="${_tvfetch__post}&hl=${_tvfetch__SL}"
+            _tvfetch__post="${_tvfetch__post}&f=12khz_16bit_stereo"
+
+            wget -q -O- "${_tvfetch__url}" --post-data "${_tvfetch__post}" > "${2}"
+            if grep "^ERROR" "${2}" >/dev/null 2>&1; then
+                rm -rf "${2}"; return 1;
+            fi
+        }
+
+        i="0"; _txt2speech__buffer=""; for word; do
+            if [ "$((${#_txt2speech__buffer} + ${#word}))" -gt "10000" ]; then
+                i="$(($i + 1))"
+                _txt2speech__voicerss_fetch "${_txt2speech__buffer}" \
+                    "${_txt2speech__tmp_dir}/$(printf "%05d.mp3" "${i}")" && \
+                    _txt2speech__buffer="${word}" || return 1
+            else
+                _txt2speech__buffer="${_txt2speech__buffer} ${word}"
+            fi
+        done
+
+        if [ -n "${_txt2speech__buffer}" ]; then
+            i="$(($i + 1))"
+            _txt2speech__voicerss_fetch "${_txt2speech__buffer}" \
+                "${_txt2speech__tmp_dir}/$(printf "%05d.mp3" "${i}")" || return 1
+        fi
+
+        cat "${_txt2speech__tmp_dir}"/*.mp3 > "${_txt2speech__tmp_dir}"/a.mp3 \
+            2>/dev/null && _txt2speech "${_txt2speech__tmp_dir}"/a.mp3 || {   \
+            rm -rf "${_txt2speech__tmp_dir}"/a.mp3; return 1; }
+    }
+
+    _txt2speech__espeak() {
+        [ -z "${1}" ] && return 1
+        espeak -v"${SL}"+f2 -s170 -p30 "${*}" --stdout > \
+            "${_txt2speech__tmp_dir}"/a.mp3 && \
+            _txt2speech "${_txt2speech__tmp_dir}"/a.mp3 || {  \
+            rm -rf "${_txt2speech__tmp_dir}"/a.mp3; return 1; }
+    }
+
     [ -z "${1}" ] && return 1
-    _txt2speech__phrase="${*}"
 
-    while [ "${#_txt2speech__phrase}" -gt "99" ]; do
-        #TODO 29-06-2014 05:47 >> separate by word
-        _txt2speech__tmp="$(printf "%b" "${_txt2speech__phrase}" | cut -c1-99 | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
-        #http://stackoverflow.com/a/31835942/890858
-        mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&total=1&idx=0&client=t&tl=${sl}&q=${_txt2speech__tmp}" > /dev/null 2>&1
-        _txt2speech__phrase="$(printf "%b" "${_txt2speech__phrase}" | cut -c100-"$((${#_txt2speech__phrase} + 1))")"
-        #http://stackoverflow.com/questions/4988155/is-there-a-bash-command-that-can-tell-the-size-of-a-shell-variable
-    done
+    if [ -f "${1}" ]; then
+        if [ -z "${OUTPUT_FNAME}" ]; then
+            mplayer "${_txt2speech__tmp_dir}"/a.mp3 2>&1 >/dev/null
+        else
+            _cat "${_txt2speech__tmp_dir}"/a.mp3 "${OUTPUT_FNAME}"
+        fi
+        exit
+    fi
 
-    #http://stackoverflow.com/questions/296536/urlencode-from-a-bash-script
-    #http://stackoverflow.com/a/31835942/890858
-    _txt2speech__phrase="$(printf "%b" "${_txt2speech__phrase}" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
-    mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&total=1&idx=0&client=t&tl=${sl}&q=${_txt2speech__phrase}" > /dev/null 2>&1
+    if command -v md5sum >/dev/null 2>&1; then
+        _txt2speech__md5sum="$(printf "%s" "${*}" | md5sum | awk '{print $1}')"
+    elif command -v md5 >/dev/null 2>&1; then
+        _txt2speech__md5sum="$(printf "%s" "${*}" | md5 -r | awk '{print $1}')"
+    elif command -v openssl >/dev/null 2>&1; then
+        _txt2speech__md5sum="$(printf "%s" "${*}" | openssl dgst -md5 | awk '{print $2}')"
+    else
+        _txt2speech__md5sum="no_checksum_available"
+    fi
+
+    _txt2speech__tmp_dir="/tmp/txt2speech_${_txt2speech__md5sum}"
+    mkdir /tmp 2>/dev/null; mkdir "${_txt2speech__tmp_dir}" 2>/dev/null
+
+    [ -f "${_txt2speech__tmp_dir}/a.mp3" ] && _txt2speech "${_txt2speech__tmp_dir}/a.mp3"
+    _txt2speech__txt="${*}"
+
+    if [ -n "${USER_SELECTED_SPEECH_SYNTH}" ]; then
+        _txt2speech__$USER_SELECTED_SPEECH_SYNTH "${_txt2speech__txt}"
+    else
+        if [ "${#_txt2speech__txt}" -lt "100" ]; then
+            for SPEECH_SYNTH in $SPEECH_SYNTHESIZERS; do
+                _txt2speech__$SPEECH_SYNTH "${_txt2speech__txt}" && break
+            done
+        elif [ "${#_txt2speech__txt}" -lt "5000" ]; then
+            for SPEECH_SYNTH in $SPEECH_SYNTHESIZERS_MEDIUM; do
+                _txt2speech__$SPEECH_SYNTH "${_txt2speech__txt}" && break
+            done
+        elif [ "${#_txt2speech__txt}" -lt "10000" ]; then
+            for SPEECH_SYNTH in $SPEECH_SYNTHESIZERS_BIG; do
+                _txt2speech__$SPEECH_SYNTH "${_txt2speech__txt}" && break
+            done
+        else
+            for SPEECH_SYNTH in $SPEECH_SYNTHESIZERS_HUGE; do
+                _txt2speech__$SPEECH_SYNTH "${_txt2speech__txt}" && break
+            done
+        fi
+    fi
 }
 
 if [ ! -t 0 ]; then
@@ -62,22 +249,95 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _die
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage ;;
-        --*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+        -h|--help) _usage; exit ;;
+        -l|--list-synth)
+            for SPEECH_SYNTH in $SPEECH_SYNTHESIZERS; do
+                printf "%s\\n" "${SPEECH_SYNTH}"
+            done
+            exit ;;
+        '-s'|'--synthesizer')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter" ;;
+                esac
+                shift; USER_SELECTED_SPEECH_SYNTH="${1}"; [ "${1}" ] && shift
+                _check_synthesizer "${USER_SELECTED_SPEECH_SYNTH}"
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -s*) USER_SELECTED_SPEECH_SYNTH="${1#-s}"; shift
+            _check_synthesizer "${USER_SELECTED_SPEECH_SYNTH}" ;;
+        --synthesizer*) USER_SELECTED_SPEECH_SYNTH="${1#--synthesizer}"; shift
+            _check_synthesizer "${USER_SELECTED_SPEECH_SYNTH}" ;;
+        '-f'|'--file')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                     -*) _die "Option '${arg}' requires a parameter" ;;
+                esac
+                shift; INPUT_FNAME="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -f*) INPUT_FNAME="${1#-f}"; shift ;;
+        --file*) INPUT_FNAME="${1#--file}"; shift ;;
+        '-o'|'--output')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    '-') : ;;
+                     -*) _die "Option '${arg}' requires a parameter" ;;
+                esac
+                shift; OUTPUT_FNAME="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -o*) OUTPUT_FNAME="${1#-o}"; shift ;;
+        --output*) OUTPUT_FNAME="${1#--output}"; shift ;;
+        -c|--clean-cache) rm -rf /tmp/txt2speech_* && \
+            printf "%s\\n" "Cache cleared successfully" && exit ;;
+        '-') : ;; #special stdout character
+        --*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 
-[ ! -f "$(command -v "mplayer")" ] && { _notify "[-] Error" "install 'mplayer' to run this program" 2>&1; exit 1; }
+[ ! -f "$(command -v "mplayer")" ] && \
+    _notify "[-] Error" "install 'mplayer' to run this program" 2>&1 && exit 1
+
+if [ -f "$(command -v "xclip")" ]; then
+    clipboard="xclip -selection clipboard -o"
+elif [ -f "$(command -v "sselp")" ]; then
+    clipboard="sselp"
+else
+    clipboard="echo clipboard unavailable"
+fi
 
 case "${1}" in
-    -*) sl=$(printf "%s" "${1}"  | cut -d'-' -f2)
-        #maybe return an error message is better
-        [ -z "${sl}" ] && sl="en"; shift ;;
-    *)  sl="en"; ;;
+    '-') SL="en" ;;
+    -*) SL="${1#*-}"
+        #maybe returning an error message could be better better
+        [ -z "${SL}" ] && SL="en"; shift
+        SL="$(printf "%s" "${SL}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' \
+            'abcdefghijklmnopqrstuvwxyz')"
+        ;;
+    *)  SL="en" ;;
 esac
 
-_txt2speech "${@}"
+if [ -z "${INPUT_FNAME}" ]; then
+    phrase="${@}"
+    #last char
+    phrase_tmp="${phrase%?}"
+    if [ X"${phrase#$phrase_tmp}" = X"-" ]; then
+        phrase="${phrase%?}"
+        phrase="${phrase} $(${clipboard})"
+    fi
+    _txt2speech "${phrase}"
+else
+    if [ -s "${INPUT_FNAME}" ]; then
+        _txt2speech "$(cat "${INPUT_FNAME}")"
+    else
+        _die "Input file '${INPUT_FNAME}' is empty or doesn't exists"
+    fi
+fi

@@ -1,6 +1,6 @@
 #!/bin/sh
-#description: dmenu txt2speech app
-#usage: dmenu-txt2speech is best suited for launching from a shortcut
+#description: dmenu txt2speech
+#usage: dmenu-txt2speech #best suited to be launched from a shortcut
 
 #example: dmenu-txt2speech
 #a gui menu appears asking for which phrase to say, default to english voice
@@ -49,17 +49,5 @@ else
 fi
 
 [ -z "${phrase}" ] && exit 1;
-
-if [ -f "$(command -v "xclip")" ]; then
-    clipboard="xclip -o"
-elif [ -f "$(command -v "sselp")" ]; then
-    clipboard="sselp"
-else
-    clipboard="echo clipboard not available"
-fi
-
-if [ X"$(printf "%s" "${phrase}" | cut -d' ' -f2)" = X"-" ]; then
-    phrase="$(printf "%s" "${phrase}" | cut -d' ' -f1) $(${clipboard})"
-fi
 
 txt2speech ${phrase}
