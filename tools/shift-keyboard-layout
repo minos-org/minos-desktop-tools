@@ -62,8 +62,8 @@ fi
 for arg; do #parse options
     case "${arg}" in
         --) shift; break ;;
-        -h|--help) { printf "Usage: %b\\n" "$(expr "${0}" : '.*/\([^/]*\)')\\nChange keyboard layout (see minos-config)." >&2; exit 1; } ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
+        -h|--help) { printf "Usage: %b\\n" "$(expr "${0}" : '.*/\([^/]*\)')\\nChange keyboard layout (see minos-config)."; exit; } ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" >&2
             printf "Usage: %b\\n" "$(expr "${0}" : '.*/\([^/]*\)')\\nChange keyboard layout (see minos-config)." >&2
             exit 1
             ;;

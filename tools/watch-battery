@@ -29,9 +29,14 @@ _basename()
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(_basename "${0}")" >&2
-    printf "%s\\n" "This program should be run as a cron job, eg.: */3 * * * * $(_basename "${0}")" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(_basename "${0}")"
+    printf "%s\\n" "This program should be run as a cron job, eg.: */3 * * * * $(_basename "${0}")"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _notify()
@@ -115,9 +120,9 @@ _sort_batt_values()
 
 for arg in "${@}"; do #parse options
     case "${arg}" in
-        --) shift; break  ;;
-        -h|--help) _usage ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+        --) shift; break ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 

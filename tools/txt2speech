@@ -23,7 +23,7 @@ _usage() {
     printf "%s\\n" "  -l, --list-synth      list available synthetizers"
     printf "%b\\n" "  -f, --file [file]     read from file"
     printf "%b\\n" "  -o, --output [file]   write to file"
-    printf "%b\\n" "  -c, --clean-cache     remove temporal files" >&2
+    printf "%b\\n" "  -c, --clean-cache     remove temporal files"
     printf "%s\\n" "  -h, --help            show this help message and exit"
 }
 
@@ -51,7 +51,7 @@ _notify() {
 
 _die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
-    _usage; >&2; exit 1
+    _usage >&2; exit 1
 }
 
 _cat() {
@@ -253,7 +253,7 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage; exit ;;
+        -h|--help) _usage && exit ;;
         -l|--list-synth)
             for SPEECH_SYNTH in $SPEECH_SYNTHESIZERS; do
                 printf "%s\\n" "${SPEECH_SYNTH}"

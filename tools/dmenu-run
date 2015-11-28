@@ -22,26 +22,25 @@ terminal_emulators="urxvt rxvt gnome-terminal konsole xterm"
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [args ...]" >&2
-    printf "%s\\n" "Dmenu based launcher." >&2
-    printf "%s\\n" >&2
-    printf "%s\\n" "Possible entries:" >&2
-    printf "%s\\n" >&2
-    printf "%s\\n" "  firefox                    => launch firefox" >&2
-    printf "%s\\n" "  firefox wikipedia.org      => launch firefox and open wikipedia.org" >&2
-    printf "%s\\n" "  [man|info] ls              => open ls manual in a terminal emulator" >&2
-    printf "%s\\n" "  [ussh|ssh] user@domain.tls => start ssh session in a terminal emulator" >&2
-    printf "%s\\n" "  vim[m] /path/file          => open file using vim in a terminal emulator" >&2
-    printf "%s\\n" "  dmenu:g[oogle]             => search 'dmenu' in google using the default web browser" >&2
-    printf "%s\\n" "  dmenu:b[ing]               => search 'dmenu' in bing using the default web browser" >&2
-    printf "%s\\n" "  htop:t[erminal]            => open htop in a terminal emulator" >&2
-    printf "%s\\n" "  http://wikipedia.org       => open url in the default browser" >&2
-    printf "%s\\n" "  /path/image.png            => open image in the default image viewer" >&2
-    printf "%s\\n" "  3*5                        => execute and display arithmetic operation" >&2
-    printf "%s\\n" "  15 usd to mxn              => execute and display money currency" >&2
-    printf "%s\\n" "  :weather                   => show current weather" >&2
-    printf "%s\\n" >&2
-    exit 1
+    printf "%s\\n" "Usage: ${progname} [args ...]"
+    printf "%s\\n" "Dmenu based launcher."
+    printf "%s\\n"
+    printf "%s\\n" "Possible entries:"
+    printf "%s\\n"
+    printf "%s\\n" "  firefox                    => launch firefox"
+    printf "%s\\n" "  firefox wikipedia.org      => launch firefox and open wikipedia.org"
+    printf "%s\\n" "  [man|info] ls              => open ls manual in a terminal emulator"
+    printf "%s\\n" "  [ussh|ssh] user@domain.tls => start ssh session in a terminal emulator"
+    printf "%s\\n" "  vim[m] /path/file          => open file using vim in a terminal emulator"
+    printf "%s\\n" "  dmenu:g[oogle]             => search 'dmenu' in google using the default web browser"
+    printf "%s\\n" "  dmenu:b[ing]               => search 'dmenu' in bing using the default web browser"
+    printf "%s\\n" "  htop:t[erminal]            => open htop in a terminal emulator"
+    printf "%s\\n" "  http://wikipedia.org       => open url in the default browser"
+    printf "%s\\n" "  /path/image.png            => open image in the default image viewer"
+    printf "%s\\n" "  3*5                        => execute and display arithmetic operation"
+    printf "%s\\n" "  15 usd to mxn              => execute and display money currency"
+    printf "%s\\n" "  :weather                   => show current weather"
+    printf "%s\\n"
 }
 
 _die() {
@@ -378,7 +377,7 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage ;;
+        -h|--help) _usage && exit ;;
         #dmenu-run can be used in the command_not_found_handle function
         #at /etc/bash.bashrc to provide math, conversions, weather
         #and other operations on invalid commands

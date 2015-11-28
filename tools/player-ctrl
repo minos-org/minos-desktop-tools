@@ -7,16 +7,14 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') play|pause|toggle|next|previous" >&2
-    printf "%s\\n" "Control player apps." >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') play|pause|toggle|next|previous"
+    printf "%s\\n" "Control player apps."
 }
 
 _die()
 {
-    [ -z "${1}" ] && return 1
-    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
-    exit 1
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _mplayer()
@@ -67,7 +65,7 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ X"${#}" != X"1" ] && _usage
+[ X"${#}" != X"1" ] && _die
 
 case "${1}" in
          pl*) _param="play"     ;;
@@ -75,7 +73,8 @@ case "${1}" in
          pr*) _param="previous" ;;
           n*) _param="next"     ;;
           t*) _param="toggle"   ;;
-           *) _usage            ;;
+   -h|--help) _usage && exit    ;;
+           *) _die ;;
 esac
 
 _player_ctrl "${_param}"

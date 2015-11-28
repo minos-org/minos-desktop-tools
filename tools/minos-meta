@@ -8,19 +8,18 @@
 #the defined m-file-manager is launched (~/.minos/config)
 _usage()
 {
-    printf "%s\\n" "Usage: minos-meta m-app [arguments]..." >&2
-    printf "%s\\n" "   or: minos-meta --list[-full]" >&2
-    printf "%s\\n" "   or: m-app [arguments]..."  >&2
-    printf "\\n" >&2
-    printf "%s\\n" "minos-meta is a multi-call program used to launch" >&2
-    printf "%s\\n" "default apps in minos. Most people will create a link" >&2
-    printf "%s\\n" "to minos-meta for each generic app they wish to manage." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "E.g: m-pdf -> minos-meta, on this setup minos-meta will" >&2
-    printf "%s\\n" "read the configuration file (http://minos.io/doc/config)" >&2
-    printf "%s\\n" "and will launch the default pdf viewer, if none is set" >&2
-    printf "%s\\n" "it'll exit with an error." >&2
-    exit 1
+    printf "%s\\n" "Usage: minos-meta m-app [arguments]..."
+    printf "%s\\n" "   or: minos-meta --list[-full]"
+    printf "%s\\n" "   or: m-app [arguments]..."
+    printf "\\n"
+    printf "%s\\n" "minos-meta is a multi-call program used to launch"
+    printf "%s\\n" "default apps in minos. Most people will create a link"
+    printf "%s\\n" "to minos-meta for each generic app they wish to manage."
+    printf "\\n"
+    printf "%s\\n" "E.g: m-pdf -> minos-meta, on this setup minos-meta will"
+    printf "%s\\n" "read the configuration file (http://minos.io/doc/config)"
+    printf "%s\\n" "and will launch the default pdf viewer, if none is set"
+    printf "%s\\n" "it'll exit with an error."
 }
 
 _list()
@@ -48,13 +47,13 @@ case "${progname}" in
         for arg; do
             case "${arg}" in
                 --) shift;   break  ;;
-                -h|--help)   _usage ;;
+                -h|--help)   _usage && exit ;;
                 --list)      _list  ;;
                 --list-full) _list full ;;
             esac
         done
         if [ -z "${1}" ]; then
-            _usage
+            _usage && exit
         else
             progname="${1}"; shift;
             default_app="$(minos-config "${progname}")"

@@ -5252,22 +5252,27 @@ vCrQXwButUu78pznPOc5z3nOc57znOc85znPec5znvOc5zznOc95znOe85znPOc5z3nOc57znOf+
 
 _usage()
 {
-    printf "%s\\n" "Usage: ${progname} [option] [time|stop]" >&2
-    printf "%s\\n" "Dmenu countdown alarm." >&2
-    printf "%s\\n" >&2
-    printf "%s\\n" "  stop [regex]    stop last or specified alarm" >&2
-    printf "%s\\n" >&2
-    printf "%s\\n" "  -h, --help      show this message and exit" >&2
-    printf "%s\\n" "  -e, --exec      exec on timeout eg. 'mplayer /path/alarm.ogg'" >&2
-    printf "%s\\n" "  -t, --timeout   stop alarm after specified time, by default 30m" >&2
-    printf "%s\\n" >&2
-    printf "%s\\n" "Time format (similar to gnu \`sleep\`):" >&2
-    printf "%s\\n" "  5           =>  wait 5 seconds" >&2
-    printf "%s\\n" "  3m          =>  wait 3 minutes" >&2
-    printf "%s\\n" "  1h 7m       =>  wait 1 hr and 7 minutes" >&2
-    printf "%s\\n" "  1h:13m:12s  =>  wait 1 hr, 13 minutes and 12 seconds" >&2
-    printf "%s\\n" "  2d46m       =>  wait 2 days and 46 minutes" >&2
-    exit 1
+    printf "%s\\n" "Usage: ${progname} [option] [time|stop]"
+    printf "%s\\n" "Dmenu countdown alarm."
+    printf "%s\\n"
+    printf "%s\\n" "  stop [regex]    stop last or specified alarm"
+    printf "%s\\n"
+    printf "%s\\n" "  -h, --help      show this message and exit"
+    printf "%s\\n" "  -e, --exec      exec on timeout eg. 'mplayer /path/alarm.ogg'"
+    printf "%s\\n" "  -t, --timeout   stop alarm after specified time, by default 30m"
+    printf "%s\\n"
+    printf "%s\\n" "Time format (similar to gnu \`sleep\`):"
+    printf "%s\\n" "  5           =>  wait 5 seconds"
+    printf "%s\\n" "  3m          =>  wait 3 minutes"
+    printf "%s\\n" "  1h 7m       =>  wait 1 hr and 7 minutes"
+    printf "%s\\n" "  1h:13m:12s  =>  wait 1 hr, 13 minutes and 12 seconds"
+    printf "%s\\n" "  2d46m       =>  wait 2 days and 46 minutes"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _notify()
@@ -5780,30 +5785,26 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage ;;
+        -h|--help) _usage && exit ;;
         '-e'|'--exec')
                 if [ "${#}" -gt "1" ]; then
                     case "${2}" in
-                        -*) printf "%s\\n" "Option '${arg}' requires a parameter"
-                            _usage ;;
+                        -*) _die "Option '${arg}' requires a parameter" ;;
                     esac
                     shift; cmd="${1}"; [ "${1}" ] && shift
                 else
-                    printf "%s\\n" "Option '${arg}' requires a parameter"
-                    _usage
+                    _die "Option '${arg}' requires a parameter"
                 fi ;;
          -e*)     cmd="${1#-e}"    ; shift ;;
          --exec*) cmd="${1#--exec}"; shift ;;
         '-t'|'--timeout')
                 if [ "${#}" -gt "1" ]; then
                     case "${2}" in
-                        -*) printf "%s\\n" \
-                            "Option '${arg}' requires a parameter"; _usage ;;
+                        -*) _die "Option '${arg}' requires a parameter" ;;
                     esac
                     shift; timeout="${1}"; [ "${1}" ] && shift
                 else
-                    printf "%s\\n" "Option '${arg}' requires a parameter"
-                    _usage
+                    _die "Option '${arg}' requires a parameter"
                 fi ;;
          -t*)        timeout="${1#-t}"       ; shift ;;
          --timeout*) timeout="${1#--timeout}"; shift ;;

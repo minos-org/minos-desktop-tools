@@ -4,18 +4,16 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]" >&2
-    printf "%s\\n" "Run startup apps in minos." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]"
+    printf "%s\\n" "Run startup apps in minos."
+    printf "\\n"
+    printf "%s\\n" "  -h, --help   show this help message and exit"
 }
 
 _die()
 {
-    [ -z "${1}" ] && return 1
-    printf "%s\\n" "${*}" >&2
-    _usage
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 if [ ! -t 0 ]; then
@@ -25,9 +23,9 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift;   break  ;;
-        -h|--help)   _usage ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" ;;
+        --) shift; break ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 

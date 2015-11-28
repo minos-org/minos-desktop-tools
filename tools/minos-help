@@ -4,11 +4,16 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]" >&2
-    printf "%s\\n" "Minos help window." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]"
+    printf "%s\\n" "Minos help window."
+    printf "\\n"
+    printf "%s\\n" "  -h, --help   show this help message and exit"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _whereis()
@@ -26,9 +31,9 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift;   break  ;;
-        -h|--help)   _usage ;;
-        -*) printf "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'\\n" >&2; _usage ;;
+        --) shift; break  ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 

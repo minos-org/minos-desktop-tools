@@ -11,20 +11,19 @@ DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [option]" >&2
-    printf "%s\\n" "Dmenu based session menu for tiling window managers." >&2
-    printf "%s\\n" >&2
-    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
-    printf "%s\\n" >&2
-    printf "%s\\n" "Options:" >&2
-    printf "%s\\n" "  lock" >&2
-    printf "%s\\n" "  logout" >&2
-    printf "%s\\n" "  relogin" >&2
-    printf "%s\\n" "  reboot" >&2
-    printf "%s\\n" "  shutdown" >&2
-    printf "%s\\n" "  suspend" >&2
-    printf "%s\\n" "  hibernate" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [option]"
+    printf "%s\\n" "Dmenu based session menu for tiling window managers."
+    printf "%s\\n"
+    printf "%s\\n" "  -h, --help   show this help message and exit"
+    printf "%s\\n"
+    printf "%s\\n" "Options:"
+    printf "%s\\n" "  lock"
+    printf "%s\\n" "  logout"
+    printf "%s\\n" "  relogin"
+    printf "%s\\n" "  reboot"
+    printf "%s\\n" "  shutdown"
+    printf "%s\\n" "  suspend"
+    printf "%s\\n" "  hibernate"
 }
 
 _die()
@@ -275,12 +274,12 @@ fi
 [ X"${LOGNAME}" = X"root" ] && _sudo=""
 
 case "${choice}" in
- -h|--help) _usage     ;;
-      lock) _lock      ;;
-    logout) _logout    ;;
-   relogin) _relogin   ;;
-    reboot) _reboot    ;;
-  shutdown) _shutdown  ;;
+ -h|--help) _usage && exit ;;
+      lock) _lock          ;;
+    logout) _logout        ;;
+   relogin) _relogin       ;;
+    reboot) _reboot        ;;
+  shutdown) _shutdown      ;;
    suspend) _lock &
             #we never know where the machine could wake up
             player-ctrl pause >/dev/null 2>&1

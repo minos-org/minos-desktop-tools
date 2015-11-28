@@ -7,9 +7,14 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') image ..." >&2
-    printf "%s\\n" "Browse image launcher." >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') image ..."
+    printf "%s\\n" "Browse image launcher."
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _notify()
@@ -123,13 +128,13 @@ _vw()
     #set -- "${@}" $(cat)
 #fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _die
 
 for arg in "${@}"; do #parse options
     case "${arg}" in
         --) shift; break  ;;
-        -h|--help) _usage ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 
