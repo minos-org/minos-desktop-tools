@@ -5466,7 +5466,9 @@ _secs2string() {
     _s2string__hours_in_days="$(($_s2string__day * 24))"
     _s2string__hour="$(($_s2string__hour + _s2string__hours_in_days))"
 
-    printf "%s\\n" "${_s2string__hour}h ${_s2string__min}m ${_s2string__sec}s"
+    [ "${_s2string__hour}" -gt "0" ] && printf "%dh " "${_s2string__hour}"
+    [ "${_s2string__min}" -gt "0" ]  && printf "%dm " "${_s2string__min}"
+    [ "${_s2string__sec}" -gt "0" ]  && printf "%ds"  "${_s2string__sec}"
 }
 
 _decode64() {
@@ -5817,10 +5819,21 @@ fi
 case "${time}" in
     s*) _stop "$(printf "%s\\n" "${time}" | \
         awk '{$1=""; sub(/^[ \t]+/, ""); print}')" && exit 0 ;;
-    '') alarms="$(cat "${db}" 2>/dev/null | awk -F: '{printf $1 ":" $2 "\n" }')"
+    '') alarms="$(cat "${db}" 2>/dev/null | \
+        #orig_time:exec:timet_current:timet_target:timeout
+        awk -F: '{printf $1 ":" $2 ":" $4 "\n"}' | \
+        while IFS= read -r alarm; do
+            orig_time_alarm="${alarm%%:*}"; alarm="${alarm#*:}"
+            exec_alarm="${alarm%%:*}"; alarm="${alarm#*:}"
+            target_time_alarm="${alarm}"
+            eta_alarm="$(($target_time_alarm - $(date '+%s')))"
+            eta_human_format_alarm="$(_secs2string "${eta_alarm}")"
+            printf "%s:%s\\n" "${eta_alarm}:${orig_time_alarm}" \
+                              "${eta_human_format_alarm}:${exec_alarm}"
+        done | sort -n | awk -F: '{printf $2 " [eta " $3 "]\n" $4 "\n" }')"
         [ -z "${alarms}" ] || _notify "Configured alarms" "${alarms}"; exit ;;
     *)  secs="$(_secs "${time}")"
-        [ -z "${secs}" ] && _notify "Invalid time format '${time}'"   \
+        [ -z "${secs}" ] && _notify "Invalid time format '${time}'"      \
             "$(printf "\\n%s\\n%b\\n%b\\n%b\\n%b\\n%b" "Valid examples:" \
             "\t" "5\t\t=> wait 5 minutes" "3m\t\t=> wait 3 minutes"      \
             "1h 7m\t=> wait 1 hr and 7 minutes" \
