@@ -2,22 +2,19 @@
 #description: show shortcut information in minos
 #usage: minos-help
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]"
     printf "%s\\n" "Minos help window."
     printf "\\n"
     printf "%s\\n" "  -h, --help   show this help message and exit"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_whereis()
-{
+_whereis() {
     [ -z "${1}" ] && return 1
     if ! command -v "${1}" 2>/dev/null; then
         return 1

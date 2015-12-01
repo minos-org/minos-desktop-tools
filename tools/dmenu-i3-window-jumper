@@ -31,4 +31,3 @@ else
     # Focus window
     i3-msg "[title=\"${TITLE}\"] focus"
 fi
-

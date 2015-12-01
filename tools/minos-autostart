@@ -2,16 +2,14 @@
 #description: run initial apps in minos
 #usage: minos-autostart
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]"
     printf "%s\\n" "Run startup apps in minos."
     printf "\\n"
     printf "%s\\n" "  -h, --help   show this help message and exit"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }

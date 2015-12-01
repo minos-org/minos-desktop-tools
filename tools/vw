@@ -5,20 +5,17 @@
 
 #https://wiki.archlinux.org/index.php/Feh#File_Browser_Image_Launcher
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') image ..."
     printf "%s\\n" "Browse image launcher."
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_notify()
-{
+_notify() {
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
@@ -40,8 +37,7 @@ _notify()
     fi
 }
 
-_basename()
-{
+_basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
@@ -58,8 +54,8 @@ _basename()
     printf "%s\\n" "${_basename__name}"
 }
 
-_dirname()
-{   #returns string containing dirname on success, 1 on fail
+_dirname() {
+    #returns string containing dirname on success, 1 on fail
     [ -z "${1}" ] && return 1
 
     case "${1}" in
@@ -71,8 +67,7 @@ _dirname()
     esac
 }
 
-_validimage()
-{
+_validimage() {
     [ -z "${1}" ]   && return 1
     [ ! -f "${1}" ] && return 1
     case "${1}" in
@@ -81,8 +76,7 @@ _validimage()
     esac
 }
 
-_vw()
-{
+_vw() {
     [ -z "${1}" ] && return 1
     if [ -d "${1}" ]; then
         _vw__dir="${1}"

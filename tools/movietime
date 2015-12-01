@@ -10,8 +10,7 @@ progname="$(expr "${0}" : '.*/\([^/]*\)')"
 txtbld="$(tput bold)" #bold
 txtrst="$(tput sgr0)" #reset
 
-_usage()
-{
+_usage() {
     printf "\\n"
     printf "%s\\n" "   ${progname} disables screen blanking and screensaver to allow viewing a video. Running the program again will enable them." | fmt -c -w 76
     printf "\\n"
@@ -49,14 +48,12 @@ _usage()
     printf "\\n"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_notify()
-{
+_notify() {
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
@@ -78,8 +75,8 @@ _notify()
     fi
 }
 
-_daemonize()
-{   #daemonize an external command
+_daemonize() {
+    #daemonize an external command
     #http://blog.n01se.net/blog-n01se-net-p-145.html
     [ -z "${1}" ] && return 1
     (   # 1. fork, to guarantee the child is not a process
@@ -133,16 +130,14 @@ _daemonize()
     fi
 }
 
-_kill_script()
-{
+_kill_script() {
     kill $(pgrep -f "/bin/sh ${inhibit_script}") > /dev/null 2>&1 || \
     kill -9 $(pgrep -f "/bin/sh ${inhibit_script}") > /dev/null 2>&1
     rm -rf "${inhibit_script}"
 }
 
 #suspend inhibit script (must be run as a separate process)
-_suspend_script()
-{
+_suspend_script() {
     printf "%s\\n" '#!/bin/sh
     i=0; while [ "$i" -le "'${resume_time}'" ]; do
         #simulate user activity every minute
@@ -153,8 +148,7 @@ _suspend_script()
     done'
 }
 
-_movietime()
-{
+_movietime() {
     _movietime__dmps_status="$(xset -q | awk '/DPMS is/ {printf $3}')"
     _movietime__running="$(pgrep -f "/bin/sh ${inhibit_script}")"
 

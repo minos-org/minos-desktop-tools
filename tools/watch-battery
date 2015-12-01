@@ -9,8 +9,7 @@
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
-_basename()
-{
+_basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
@@ -27,20 +26,17 @@ _basename()
     printf "%s\\n" "${_basename__name}"
 }
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(_basename "${0}")"
     printf "%s\\n" "This program should be run as a cron job, eg.: */3 * * * * $(_basename "${0}")"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_notify()
-{
+_notify() {
     [ -z "${1}" ] && return 1
 
     #set -x
@@ -90,8 +86,7 @@ _notify()
     fi
 }
 
-_valid_batt_values()
-{
+_valid_batt_values() {
     if [ -z "${1}" ]; then
         return 1
     else
@@ -108,8 +103,8 @@ _valid_batt_values()
     fi
 }
 
-_sort_batt_values()
-{ if [ -z "${1}" ]; then
+_sort_batt_values() {
+    if [ -z "${1}" ]; then
         return 1
     else
         _sbv__result="$(printf "%s" "${1}" | awk '{ gsub(/^[ \t]+|[ \t]+$/, ""); print }')"

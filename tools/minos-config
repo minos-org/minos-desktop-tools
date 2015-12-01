@@ -5,8 +5,7 @@
 #example: minos-config wallpaper
 #/usr/share/minos/wallpapers/minos.png
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] key"
     printf "%s\\n" "Query tool for minos configuration files."
     printf "\\n"
@@ -16,14 +15,12 @@ _usage()
     printf "%s\\n" "  -h, --help          show help (this text)"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_get_minos_config()
-{
+_get_minos_config() {
     [ -z "${1}" ] && return 1
     if [ -z "${config_file}" ]; then
         _gmc__option="$(awk -v pattern="^${1} "              \
@@ -45,8 +42,7 @@ _get_minos_config()
             sed "s:\$HOME:$HOME:g;s:~/:$HOME/:;s:\"::g;s:\'::g;"
 }
 
-_dump_minos_config()
-{
+_dump_minos_config() {
     [ -z "${config_file}" ] && \
         _dpc__home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>/dev/null) || \
         _dpc__home=$(awk '!/^#|^$/' "${config_file}" 2>/dev/null)

@@ -6,8 +6,7 @@
 
 #example: minos-meta m-file-manager
 #the defined m-file-manager is launched (~/.minos/config)
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: minos-meta m-app [arguments]..."
     printf "%s\\n" "   or: minos-meta --list[-full]"
     printf "%s\\n" "   or: m-app [arguments]..."
@@ -22,8 +21,7 @@ _usage()
     printf "%s\\n" "it'll exit with an error."
 }
 
-_list()
-{
+_list() {
     printf "%s\\n" "list"
     exit
     #TODO 25-12-2014 14:38 >> reverse links, @google

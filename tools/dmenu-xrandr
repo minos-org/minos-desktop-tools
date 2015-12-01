@@ -9,15 +9,13 @@
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 
-_die()
-{
+_die() {
     [ -z "${1}" ] && _die_msg="dmenu" || _die_msg="${1}"
     printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | ${DMENU}
     exit 1
 }
 
-_arraylen()
-{
+_arraylen() {
     [ -z "${1}" ] && return 1
     _arraylen__counter="0"
     _arraylen__copy="${1}"
@@ -36,14 +34,12 @@ _arraylen()
     printf "%s" "${_arraylen__counter}"
 }
 
-_str2lower()
-{
+_str2lower() {
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${@}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
 }
 
-_gen_rotate_opts()
-{
+_gen_rotate_opts() {
     [ -z "${1}" ] && return 1
     _gen_rotate_opts__copy="${rotate}"
     _gen_rotate_opts__string=""
@@ -65,8 +61,7 @@ _gen_rotate_opts()
     printf "%s" "${_gen_rotate_opts__string}"
 }
 
-_gen_offauto_opts()
-{
+_gen_offauto_opts() {
     [ -z "${1}" ] && return 1
     #never turn off laptop screen
     [ X"${1}" = X"LVDS1" ] && return
@@ -91,8 +86,7 @@ _gen_offauto_opts()
     printf "%s" "${_gen_offauto_opts__string}"
 }
 
-_gen_resolution_opts()
-{
+_gen_resolution_opts() {
     [ -z "${1}" ] && return 1
 
     eval _gen_resolution_opts__copy=\$mode_$1
@@ -112,8 +106,7 @@ _gen_resolution_opts()
     printf "%s" "${_gen_resolution_opts__string}"
 }
 
-_gen_position_opts()
-{
+_gen_position_opts() {
     [ -z "${1}" ] && return 1
     [ "${connected_outputs_len}" -lt "2" ] && return 1
     case "${active_outputs}" in
@@ -138,8 +131,7 @@ _gen_position_opts()
     printf "%s" "${_gen_position_opts__string}"
 }
 
-_gen_mix_opts()
-{
+_gen_mix_opts() {
     [ -z "${1}" ] && return 1
     [ "${connected_outputs_len}" -lt "2" ] && return 1
     case "${active_outputs}" in
@@ -176,8 +168,7 @@ _gen_mix_opts()
     printf "%s" "${_gen_position_opts__string}"
 }
 
-_reload_wallpaper()
-{
+_reload_wallpaper() {
     if command -v "feh" >/dev/null 2>&1; then
         if [ -f "$(minos-config wallpaper 2>/dev/null)" ]; then
             feh --bg-scale "$(minos-config wallpaper 2>/dev/null)"

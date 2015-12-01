@@ -254,8 +254,7 @@ _open() {
     fi
 }
 
-_encode_search()
-{
+_encode_search() {
     printf "%s" "${@}" | sed 's:[\t ]\+:%20:g'
 }
 
