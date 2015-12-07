@@ -306,8 +306,8 @@ _dmenu_run() {
         #money currency converter
         *" "[tT][oO]" "*) [ X"${_cmd_words_len}" = X"4" ] || _dmenu_run "${_cmd}:execute"
             if [ -x "$(command -v "cconverter" 2>/dev/null)" ]; then
-                [ -z "${_not_found_handle}" ] && exec cconverter -q ${_cmd} || \
-                    exec cconverter ${_cmd}
+                [ -z "${_not_found_handle}" ] && exec cconverter -q "${_cmd}" || \
+                    exec cconverter "${_cmd}"
             else
                 _result="$(_cconverter ${_cmd})"
                 if [ -z "${_result}" ]; then
