@@ -222,7 +222,7 @@ sub do_copy {
         Clipboard->copy($text);
     } else {
         $text =~ s/\(["|><&()]\)/\\$1/;
-        system ("echo -n \"$text\" | xclip -i");
+        system ("printf \"%s\" \"$text\" | xclip -selection clipboard -i");
     }
 }
 

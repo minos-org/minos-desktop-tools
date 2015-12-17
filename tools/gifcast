@@ -70,5 +70,5 @@ ffcast -s ffmpeg -r 15 -- -pix_fmt rgb24 "${file}" && _notify "[+] Optimising" "
     && convert -layers Optimize "${file}" "${file}".optimized \
     && mv "${file}".optimized "${file}" && _notify "[+] Done" "${file}" && \
     if command -v "xclip" >/dev/null 2>&1; then
-        printf "%s" "${file}" | xclip -selection clipboard
+        printf "%s" "${file}" 2>/dev/null | xclip -selection clipboard
     fi
