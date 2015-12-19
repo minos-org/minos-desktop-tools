@@ -5,6 +5,8 @@
 #example: txt2speech -en "hello world"
 #audio plays saying "hello world"
 
+VERSION="2015.12.18-16:31"
+
 SPEECH_SYNTHESIZERS="google voicerss espeak"
 SPEECH_SYNTHESIZERS_MEDIUM="voicerss google espeak"
 SPEECH_SYNTHESIZERS_BIG="voicerss espeak"
@@ -48,7 +50,7 @@ if __name__ == '__main__':
 
 _usage() {
     printf "%s\\n" "Usage: ${progname} [options] [-sl] phrase"
-    printf "%s\\n" "txt2speech."
+    printf "%s\\n" "${progname}."
     printf "\\n"
     printf "%s\\n" "  sl   source language ('en' by default)"
     printf "\\n"
@@ -57,6 +59,7 @@ _usage() {
     printf "%b\\n" "  -f, --file [file]     read from file"
     printf "%b\\n" "  -o, --output [file]   write to file"
     printf "%b\\n" "  -c, --clean-cache     remove temporal files"
+    printf "%b\\n" "  -U, --update          update this program to latest version"
     printf "%s\\n" "  -h, --help            show this help message and exit"
 }
 
@@ -285,6 +288,53 @@ _txt2speech() {
     fi
 }
 
+_update() {
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${0}"
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s" "${_u__current_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"    \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${progname}         = ${_u__current_file}"                 \
+        "${progname} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || { \
+    printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to update within the program" >&2
+    return 1; }
+
+    _u__error_msg="$(wget -q -O- --no-check-certificate \
+    https://raw.githubusercontent.com/minos-org/minos-tools/master/tools/txt2speech \
+        > "/tmp/${progname}.${$}" >/dev/null || curl -s  \
+    https://raw.githubusercontent.com/minos-org/minos-tools/master/tools/txt2speech \
+    > "/tmp/${progname}.${$}" >/dev/null)" || { printf "%s\\n%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" \
+        "${_u__error_msg}" >&2; return 1; }
+
+    _u__update_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "/tmp/${progname}.${$}" 2>/dev/null)"
+    _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__update_version}" ] && _u__update_version="0"
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+        if ! mv "/tmp/${progname}.${$}" "${_u__current_file}" 2>/dev/null; then
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..."
+            if command -v "sudo" >/dev/null 2>&1; then
+                sudo mv "/tmp/${progname}.${$}" "${_u__current_file}" || return 1
+            else
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..."
+                rm -rf "/tmp/${progname}.${$}"; return 1
+            fi
+        fi
+    fi
+    printf "%s %s\\n" "${progname} is up-to-date (${_u__current_version_long})"
+    rm -rf "/tmp/${progname}.${$}"
+}
+
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- "${@}" $(cat)
@@ -339,6 +389,7 @@ for arg; do #parse options
         --output*) OUTPUT_FNAME="${1#--output}"; shift ;;
         -c|--clean-cache) rm -rf /tmp/txt2speech_* && \
             printf "%s\\n" "Cache cleared successfully" && exit ;;
+        -U|--update) _update; exit "${?}" ;;
         '-') : ;; #special stdout character
         --*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
