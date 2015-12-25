@@ -1,5 +1,5 @@
 #!/bin/sh
-#description: control keyboard layouts, best suited for tiling window managers
+#description: control keyboard layouts
 #usage: shift-keyboard-layout
 #change keyboard layout to the next configured one
 
