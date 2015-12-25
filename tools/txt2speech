@@ -313,11 +313,13 @@ _update() {
 
     _u__error_msg="$(wget -q -O- --no-check-certificate \
     https://raw.githubusercontent.com/minos-org/minos-tools/master/tools/txt2speech \
-        > "/tmp/${progname}.${$}" >/dev/null || curl -s  \
+        > "/tmp/${progname}.${$}" 2>/dev/null || curl -s  \
     https://raw.githubusercontent.com/minos-org/minos-tools/master/tools/txt2speech \
-    > "/tmp/${progname}.${$}" >/dev/null)" || { printf "%s\\n%s\\n" \
+    > "/tmp/${progname}.${$}" 2>/dev/null)" || { printf "%s\\n%s\\n" \
         "ERROR: Failed to fetch update, please try later or update manually" \
         "${_u__error_msg}" >&2; return 1; }
+
+    [ -f "/tmp/${progname}.${$}" ] && echo existe || echo no existe
 
     _u__update_version_long="$(awk -F\" \
         '/VERSION=/{print $2;exit}' "/tmp/${progname}.${$}" 2>/dev/null)"
@@ -328,11 +330,13 @@ _update() {
     if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
         printf "%s %s\\n" "Updating from version" \
             "${_u__current_version_long} to ${_u__update_version_long} ..."
-        if ! mv "/tmp/${progname}.${$}" "${_u__current_file}" 2>/dev/null; then
+        if ! mv -f "/tmp/${progname}.${$}" "${_u__current_file}" 2>/dev/null; then
             printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
             printf "%s\\n" "INFO : trying with sudo ..."
             if command -v "sudo" >/dev/null 2>&1; then
                 sudo mv "/tmp/${progname}.${$}" "${_u__current_file}" || return 1
+                printf "%s %s\\n" "${progname} is up-to-date (${_u__update_version_long})"
+                return 0
             else
                 printf "%s\\n" "ERROR: sudo isn't available, exiting ..."
                 rm -rf "/tmp/${progname}.${$}"; return 1
