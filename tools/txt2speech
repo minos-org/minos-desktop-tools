@@ -149,7 +149,8 @@ _txt2speech() {
             --header='Accept-Language: en-US,en;q=0.5' --header='DNT: 1' \
             --header='Range: bytes=0-' \
             --header='Referer: http://translate.google.com' \
-            --header="${_tgfetch__ua}" > "${2}" || { rm -rf "${2}"; return 1; }
+            --header="${_tgfetch__ua}" > "${2}" || { rm -rf "${2}"
+            printf "%s\\n" "WARNING: google api timeout" >&2; return 1; }
         }
 
         i="0"; _txt2speech__buffer=""; for word; do
@@ -204,7 +205,8 @@ _txt2speech() {
 
             wget -q -O- "${_tvfetch__url}" --post-data "${_tvfetch__post}" > "${2}"
             if grep "^ERROR" "${2}" >/dev/null 2>&1; then
-                rm -rf "${2}"; return 1;
+                rm -rf "${2}"
+                printf "%s\\n" "WARNING: voicerss api timeout" >&2; return 1;
             fi
         }
 
@@ -235,7 +237,13 @@ _txt2speech() {
         espeak -v"${SL}"+f2 -s170 -p30 "${*}" --stdout > \
             "${_txt2speech__tmp_dir}"/a.mp3 && \
             _txt2speech "${_txt2speech__tmp_dir}"/a.mp3 || {  \
-            rm -rf "${_txt2speech__tmp_dir}"/a.mp3; return 1; }
+            rm -rf "${_txt2speech__tmp_dir}"/a.mp3;
+            if command -v "espeak"; then
+                printf "%s\\n" "WARNING: espeak isn't available" >&2;
+            else
+                printf "%s\\n" "WARNING: espeak invocation failed" >&2;
+            fi
+            return 1; }
     }
 
     [ -z "${1}" ] && return 1
