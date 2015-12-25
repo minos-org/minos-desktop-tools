@@ -5,7 +5,7 @@
 #example: txt2speech -en "hello world"
 #audio plays saying "hello world"
 
-VERSION="2015.12.25-15:51"
+VERSION="2015.12.25-16:08"
 
 SPEECH_SYNTHESIZERS="google voicerss espeak"
 SPEECH_SYNTHESIZERS_MEDIUM="voicerss google espeak"
