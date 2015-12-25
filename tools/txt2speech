@@ -297,7 +297,7 @@ _txt2speech() {
 }
 
 _update() {
-    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${0}"
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/$(basename "${0}")"
     _u__current_version_long="$(awk -F\" \
         '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
     _u__current_version="$(printf "%s" "${_u__current_version_long}" | awk \
