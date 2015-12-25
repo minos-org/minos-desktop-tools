@@ -1,6 +1,6 @@
 #!/bin/sh
-#description: dmenu based session menu for i3-wm
-#usage: dmenu-session is best suited for launching from a shortcut
+#description: dmenu based session menu
+#usage: dmenu-session [subcommand]
 
 #example: dmenu-session
 #appears a gui menu appears asking for which action to be taken
@@ -10,15 +10,15 @@
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [option]"
-    printf "%s\\n" "Dmenu based session menu for tiling window managers."
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [subcommand]"
+    printf "%s\\n" "Dmenu based session menu."
     printf "%s\\n"
     printf "%s\\n" "  -h, --help   show this help message and exit"
     printf "%s\\n"
-    printf "%s\\n" "Options:"
+    printf "%s\\n" "Subcommands:"
     printf "%s\\n" "  lock"
-    printf "%s\\n" "  logout"
     printf "%s\\n" "  relogin"
+    printf "%s\\n" "  logout"
     printf "%s\\n" "  reboot"
     printf "%s\\n" "  shutdown"
     printf "%s\\n" "  suspend"
@@ -43,22 +43,14 @@ _return_valid_color() {
     _return_valid_color__arg="$(printf "%s" "${_return_valid_color__arg}" | sed 's:#::g')"
     case "${_return_valid_color__arg}" in
         #http://en.wikipedia.org/wiki/Web_colors#HTML_color_names
-        white)   printf "%s" "ffffffff" ;;
-        silver)  printf "%s" "c0c0c0ff" ;;
-        gray)    printf "%s" "808080ff" ;;
-        black)   printf "%s" "000000ff" ;;
-        red)     printf "%s" "ff0000ff" ;;
-        maroon)  printf "%s" "800000ff" ;;
-        yellow)  printf "%s" "ffff00ff" ;;
-        olive)   printf "%s" "808000ff" ;;
-        lime)    printf "%s" "00ff00ff" ;;
-        green)   printf "%s" "008000ff" ;;
-        aqua)    printf "%s" "00ffffff" ;;
-        teal)    printf "%s" "008080ff" ;;
-        blue)    printf "%s" "0000ffff" ;;
-        navy)    printf "%s" "000080ff" ;;
-        fuchsia) printf "%s" "ff00ffff" ;;
-        purple)  printf "%s" "800080ff" ;;
+        white)   printf "%s" "ffffffff" ;; silver)  printf "%s" "c0c0c0ff" ;;
+        gray)    printf "%s" "808080ff" ;; black)   printf "%s" "000000ff" ;;
+        red)     printf "%s" "ff0000ff" ;; maroon)  printf "%s" "800000ff" ;;
+        yellow)  printf "%s" "ffff00ff" ;; olive)   printf "%s" "808000ff" ;;
+        lime)    printf "%s" "00ff00ff" ;; green)   printf "%s" "008000ff" ;;
+        aqua)    printf "%s" "00ffffff" ;; teal)    printf "%s" "008080ff" ;;
+        blue)    printf "%s" "0000ffff" ;; navy)    printf "%s" "000080ff" ;;
+        fuchsia) printf "%s" "ff00ffff" ;; purple)  printf "%s" "800080ff" ;;
         *)
             case "${#_return_valid_color__arg}" in #string length
                 8)  _return_valid_color__arg="$(printf "%s" \
@@ -239,6 +231,21 @@ _hibernate() {
     ${_sudo} ${hibernate}
 }
 
+_confirm() {
+    if [ "${interactive}" = "1" ]; then
+        _confirm__reply="$(printf "%s" "$(dmenu -p "Confirm ${*} [Y/n] " -i \
+            -fn Bahamas-10 -nb '#000000' -nf '#FFFFFF' -sb '#da0000'        \
+            -sf '#ffffff' <&- && printf "Y")" | tr -d '\n')"
+        case "${_confirm__reply}" in
+            'Y'|'yY'|'YY') return 0 ;;
+            'yesY'|'YesY') return 0 ;;
+                        *) return 1 ;;
+        esac
+    else
+        return 0
+    fi
+}
+
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- "${@}" $(cat)
@@ -249,7 +256,8 @@ if [ -z "${1}" ]; then
         printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): install 'dmenu' to run this program" >&2
         exit 1
     fi
-    choice="$(printf "%b\\n" "lock\nlogout\nrelogin\nreboot\nshutdown\nsuspend\nhibernate" | ${DMENU})"
+    choice="$(printf "%b\\n" "lock\nrelogin\nlogout\nreboot\nshutdown\nsuspend\nhibernate" | ${DMENU})"
+    interactive="1"
 else
     choice="${1}"
 fi
@@ -263,18 +271,16 @@ fi
 [ X"${LOGNAME}" = X"root" ] && _sudo=""
 
 case "${choice}" in
- -h|--help) _usage && exit ;;
-      lock) _lock          ;;
-    logout) _logout        ;;
-   relogin) _relogin       ;;
-    reboot) _reboot        ;;
-  shutdown) _shutdown      ;;
+ -h|--help) _usage && exit                 ;;
+      lock) _lock                          ;;
+   relogin) _relogin                       ;;
+    logout) _confirm logout   && _logout   ;;
+    reboot) _confirm reboot   && _reboot   ;;
+  shutdown) _confirm shutdown && _shutdown ;;
    suspend) _lock &
-            #we never know where the machine could wake up
             player-ctrl pause >/dev/null 2>&1
             _suspend   ;;
  hibernate) _lock &
-            #we never know where the machine could wake up
             player-ctrl pause >/dev/null 2>&1
             _hibernate ;;
          *) exit 1     ;;
