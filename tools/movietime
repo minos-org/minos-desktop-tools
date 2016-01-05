@@ -116,6 +116,8 @@ _daemonize() {
         # signals from the controlling terminal (e.g. HUP, INT)
         if command -v "setsid" >/dev/null 2>&1; then
             exec setsid "$@"
+        elif command -v "nohup" >/dev/null 2>&1; then
+            exec nohup "$@" >/dev/null 2>&1
         else
             if [ ! -f "${1}" ]; then
                 "$@"
@@ -125,7 +127,8 @@ _daemonize() {
         fi
     ) &
     # 2.2 guard against HUP (in parent)
-    if ! command -v "setsid" >/dev/null 2>&1; then
+    if ! command -v "setsid" >/dev/null 2>&1 \ &&
+       ! command -v "nohup"  >/dev/null 2>&1; then
         disown -h "${!}"
     fi
 }
