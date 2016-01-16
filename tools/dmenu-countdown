@@ -5249,7 +5249,6 @@ vCrQXwButUu78pznPOc5z3nOc57znOc85znPec5znvOc5zznOc95znOe85znPOc5z3nOc57znOf+
 3Nz/A1iYKiAAeAoA'
 #'
 
-
 _usage() {
     printf "%s\\n" "Usage: ${progname} [option] [time|stop]"
     printf "%s\\n" "Dmenu countdown alarm."
@@ -5276,13 +5275,13 @@ _die() {
 _notify() {
     [ -z "${1}" ] && return 1
     kill -9 $(pgrep notify-osd) >/dev/null 2>&1
-    if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+    if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}" "${3}"; then
         if command -v "gxmessage" 2>/dev/null; then
             font="Monaco 9"
-            DISPLAY=:0 gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
-        else
+            DISPLAY=${DISPLAY:-:0} gxmessage "${font:+-fn "$font"}" "${1}" "ok"
+        elif command -v "xmessage" 2>/dev/null; then
             font="fixed"
-            DISPLAY=:0 xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            DISPLAY=${DISPLAY:-:0}  xmessage "${font:+-fn "$font"}" "${1}" "ok"
         fi
     fi
 }
@@ -5354,9 +5353,45 @@ _stop() {
     #1. stop current alarm
     if [ -f "${alarm_basename}.${_stop__alarm_id}" ]; then
         for pid in $(pgrep -f "/bin/sh ${alarm_basename}.${_stop__alarm_id}" 2>/dev/null); do
-            kill -15 -"${pid}"
-            sleep 0.1 2>/dev/null || sleep 1
-            kill -9 -"${pid}" 2>/dev/null
+            #this proccesure is executed twice because every alarm
+            #launches two daemons, one for launching the alarm and
+            #other for auto raising the volume
+
+            if command -v "setsid" >/dev/null 2>&1; then
+                kill -15 -"${pid}"
+                sleep 0.1 2>/dev/null || sleep 1
+                kill -9 -"${pid}" 2>/dev/null
+            else
+                kill -15 "${pid}"
+                sleep 0.1 2>/dev/null || sleep 1
+                kill -9 "${pid}" 2>/dev/null
+
+                #setsid creates new process groups, if it's not available
+                #there was no main group id to kill, so after killing the
+                #daemon processes, the following code attemps to kill the
+                #child processes, it only needs to be executed once
+                [ "${_stop_child}" ] && continue || _stop_child="1"
+
+                #take the 2nd field which is the cmd to kill
+                #time_string:exec:timet_orig:timet_target:timeout
+                _stop__alarm_cmd="${_stop__alarm#*:}"
+                _stop__alarm_cmd="${_stop__alarm_cmd%%:*}"
+                _stop__alarm_cmd="${_stop__alarm_cmd%% *}" #remove cmd parameters
+
+                _stop__alarm_cmd_pid="$(pgrep -f "${_stop__alarm_cmd}" 2>/dev/null)"
+                (
+                    kill -15 ${_stop__alarm_cmd_pid} || {
+                        sleep 0.1 2>/dev/null || sleep 1
+                        kill -9  ${_stop__alarm_cmd_pid} 2>/dev/null
+                    }
+                ) || (
+                    _stop__alarm_cmd_pid="$(pgrep -f "aplay")"
+                    kill -15 ${_stop__alarm_cmd_pid} || {
+                        sleep 0.1 2>/dev/null || sleep 1
+                        kill -9 ${_stop__alarm_cmd_pid} 2>/dev/null
+                    }
+                )
+            fi
         done
         rm -rf "${alarm_basename}.${_stop__alarm_id}"*
         _notify "Cancel" "alarm stopped!"
@@ -5472,7 +5507,6 @@ _secs2string() {
 }
 
 _decode64() {
-    #decode a base64 string
     [ ! -t 0 ] && set -- "${@}" "$(cat)"
     [ -z "${1}" ] && return 1
     if command -v "base64" >/dev/null 2>&1; then
@@ -5784,25 +5818,25 @@ for arg; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
         '-e'|'--exec')
-                if [ "${#}" -gt "1" ]; then
-                    case "${2}" in
-                        -*) _die "Option '${arg}' requires a parameter" ;;
-                    esac
-                    shift; cmd="${1}"; [ "${1}" ] && shift
-                else
-                    _die "Option '${arg}' requires a parameter"
-                fi ;;
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter" ;;
+                esac
+                shift; cmd="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
          -e*)     cmd="${1#-e}"    ; shift ;;
          --exec*) cmd="${1#--exec}"; shift ;;
         '-t'|'--timeout')
-                if [ "${#}" -gt "1" ]; then
-                    case "${2}" in
-                        -*) _die "Option '${arg}' requires a parameter" ;;
-                    esac
-                    shift; timeout="${1}"; [ "${1}" ] && shift
-                else
-                    _die "Option '${arg}' requires a parameter"
-                fi ;;
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter" ;;
+                esac
+                shift; timeout="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
          -t*)        timeout="${1#-t}"       ; shift ;;
          --timeout*) timeout="${1#--timeout}"; shift ;;
                  s*) shift; _stop "${@}" && exit 0   ;;
