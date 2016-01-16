@@ -1,0 +1,5 @@
+before_install:
+  - sudo add-apt-repository ppa:minos-archive/main -y
+  - sudo apt-get update -q
+  - sudo apt-get install -y wget curl xclip xdotool gnupg dmenu gnupg-agent scrot ffcast imagemagick x11-xserver-utils sxiv feh libnotify-bin
+script: cd tests/ && xvfb-run sh tools.sh
