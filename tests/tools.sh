@@ -1,8 +1,8 @@
 #!/bin/sh
 #Based on the GNU shtool test suite
 
-tools="./tools/"
-tools_db="./tests/tools.test"
+tools="../tools/"
+tools_db="./tools.db"
 
 #database exist?
 [ -d "${tools}" ]    || exit 1
@@ -47,7 +47,7 @@ printf "%s\\n\\n" "Info - running ${tools} tests:"
 
 for tool in ${TOOLS_WITH_TEST}; do
     rm -rf ./* >/dev/null 2>&1
-    printf "%s\\n" "${tool}........................." | awk '{ printf("%s", substr($0, 0, 25)); }'
+    printf "%s\\n" "${tool} ........................" | awk '{ printf("%s ", substr($0, 0, 25)); }'
     printf "%s\\n" "PATH=../${tools}:/bin:/usr/bin" > run.sh
     sed -e "/^@begin{$tool}/,/^@end/p" -e '1,$d' ../${tools_db} |\
     sed -e '/^@begin/d' -e '/^@end/d' \
@@ -70,15 +70,13 @@ for tool in ${TOOLS_WITH_TEST}; do
     ran="$((${ran} + 1))"
 done
 
-#cleanup
-cd ..
-rm -rf test.sd >/dev/null 2>&1
-
 #result
 if [ "${failed}" -gt "0" ]; then
     printf "FAILED: passed: ${passed}/${ran}, failed: ${failed}/${ran}\\n"
+    exit 1
 else
     printf "OK: passed: ${passed}/${ran}\\n"
+    cd .. && rm -rf test.sd >/dev/null 2>&1
 fi
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :
