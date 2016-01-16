@@ -1,5 +1,7 @@
 ## About
 
+[![Build Status](https://travis-ci.org/minos-org/minos-tools.png?branch=master)](https://travis-ci.org/minos-org/minos-tools)
+
 Integration minos tools: http://minos.io
 
 ## Quick start
