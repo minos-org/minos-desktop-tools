@@ -99,7 +99,8 @@ test X"$(dmenu-run "3 + int  (2.3)")"        = X"5"
 test X"$(dmenu-run "(factorial(3))")"        = X"6"
 test X"$(dmenu-run "foo+bar")"               = X""
 test X"$(dmenu-run "1 / 0")"                 = X""
-test X"$(dmenu-run --command_not_found_handle "40412cui")" = X""
+test X"$(dmenu-run --command_not_found_handle "40412cui")"     = X""
+dmenu-run --command_not_found_handle "40412cui"; test X"${?}" != X"0"
 @end
 
 @begin{dmenu-session}

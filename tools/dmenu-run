@@ -249,7 +249,7 @@ _open() {
                     *)  return 1 ;;
                 esac
                 ;;
-            *) : ;;
+            *) return 1 ;;
         esac
     fi
 }
