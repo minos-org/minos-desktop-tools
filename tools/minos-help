@@ -44,11 +44,11 @@ font="Monaco 9"
 
 if [ -f "${HOME}"/.minos/help ]; then
     help="${HOME}"/.minos/help
-elif [ -f /etc/minos/help ]; then
-    help="${HOME}"/.minos/help
+elif [ -f "/etc/minos/help" ]; then
+    help="/etc/minos/help"
 else
     printf "%s\\n" 'No help available' > /tmp/minos-help
-    help=/tmp/minos-help
+    help="/tmp/minos-help"
 fi
 
 ${XMESSAGE} ${geometry} ${font:+-fn "$font"} -file "${help}" -buttons "got it"
