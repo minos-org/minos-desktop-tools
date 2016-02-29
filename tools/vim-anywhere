@@ -1,0 +1,85 @@
+#!/bin/sh
+#description: open a temporary file with Vim. Once Vim is closed, copy the
+#             contents to the system clipboard
+#original   : https://www.github.com/cknadler/vim-anywhere
+
+#usage: vim-anywhere (intended to be launched from a keyboard shortcut)
+
+_notify() {
+    [ -z "${1}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            else
+                font="fixed"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            fi
+        fi
+    else
+        if [ -z "${2}" ]; then
+            printf "%s\\n" "${1}"
+        else
+            printf "%s: %s\\n" "${1}" "${2}"
+        fi
+    fi
+}
+
+_usage() {
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]"
+    printf "%s\\n" "open a temporary file with [g]vim. Once closed, copy the contents to the system clipboard."
+    printf "\\n"
+    printf "%s\\n" "  -h, --help      show this help message and exit"
+    printf "%s\\n" "  -v, --verbose   show detailed information"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+for arg; do
+    case "${arg}" in
+        --) shift; break ;;
+        -h|--help) _usage && exit ;;
+        -v|--verbose) set -x      ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+    esac
+done
+
+if ! command -v "gvim" >/dev/null 2>&1; then
+    _notify "Error:" "install 'gvim' to run this program"
+    exit 1
+fi
+
+if command -v "xclip" >/dev/null 2>&1; then
+    clipboard="xclip -selection clipboard"
+elif command -v "pbcopy" >/dev/null 2>&1; then
+    clipboard="pbcopy"
+elif command -v "sselp" >/dev/null 2>&1; then
+    clipboard="sselp"
+else
+    _notify "Error:" "install either 'xclip', 'pbcopy' or 'sselp' to run this program"
+    exit 1
+fi
+
+AW_PATH="${HOME}/.vim-anywhere"
+TMPFILE_DIR="/tmp/vim-anywhere"
+TMPFILE="${TMPFILE_DIR}/$(date +"%y%m%d%H%M%S")"
+VIM_OPTS="--nofork -geometry 100x10 --role vim-anywhere -c startinsert"
+
+# Use ~/.gvimrc.min or ~/.vimrc.min if one exists
+for vimrc_path in gvimrc vimrc; do
+    if [ -f "${HOME}/.${vimrc_path}.min" ]; then
+        VIM_OPTS="${VIM_OPTS} -u {HOME}/.${vimrc_path}.min"
+        break
+    fi
+done
+
+mkdir -p "${TMPFILE_DIR}"
+touch "${TMPFILE}"
+chmod o-r "${TMPFILE}" # Make the temporal file readable only to you
+gvim ${VIM_OPTS} "${TMPFILE}"
+cat "${TMPFILE}" | ${clipboard}
