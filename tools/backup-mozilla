@@ -52,11 +52,11 @@ _bmozilla() {
     [ -z "${1}" ] && return 1
     mkdir -p "${1}" >/dev/null 2>&1
     if [ -d "${HOME}"/.mozilla ]; then
-        if command -v "lrzip" 2>/dev/null; then
+        if command -v "lrzip" >/dev/null 2>&1; then
             tar cf - "${HOME}"/.mozilla | nice lrzip -N 19 -q -L 9 > "${1}"/mozilla-"$(date +%Y-%m-%d:%H:%M)".tar.lrz
-        elif command -v "lzma" 2>/dev/null; then
+        elif command -v "lzma" >/dev/null 2>&1; then
             tar cf - "${HOME}"/.mozilla | nice lzma -9 > "${1}"/mozilla-"$(date +%Y-%m-%d:%H:%M)".tar.lzma
-        elif command -v "bzip2" 2>/dev/null; then
+        elif command -v "bzip2" >/dev/null 2>&1; then
             tar cf - "${HOME}"/.mozilla | nice bzip2 > "${1}"/mozilla-"$(date +%Y-%m-%d:%H:%M)".tar.bz2
         else
             tar cf - "${HOME}"/.mozilla | nice gzip  > "${1}"/mozilla-"$(date +%Y-%m-%d:%H:%M)".tar.gz
@@ -71,9 +71,10 @@ _blimiter() {
     [ -z "${2}" ] && return 1
 
     _blimiter__backups="$(find "${1}" -maxdepth 1 -type f | wc -l)"
+    _blimiter__rm="$(($_blimiter__backups - $2))"
 
     if [ "${_blimiter__backups}" -gt "${2}" ]; then
-        rm -rf $(find "${1}" -type f -printf '%T+ %p\n' | sort | head -1 | awk '{print $2}')
+        rm -rf $(find "${1}" -type f -printf '%T+ %p\n' | sort | head -"${_blimiter__rm}" | awk '{print $2}')
     fi
 }
 
