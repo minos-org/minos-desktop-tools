@@ -9,163 +9,129 @@
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 
-_die() {
+_dmenu_die() {
     [ -z "${1}" ] && _die_msg="dmenu" || _die_msg="${1}"
     printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | ${DMENU}
     exit 1
 }
 
-_arraylen() {
+_number_of_monitors() {
     [ -z "${1}" ] && return 1
-    _arraylen__counter="0"
-    _arraylen__copy="${1}"
+    _mlen__counter="0"
+    _mlen__copy="${1}"
 
-    while [ "${_arraylen__copy}" ]; do
-        _arraylen__option="${_arraylen__copy%%,*}"
-        _arraylen__counter="$((${_arraylen__counter} + 1))"
+    while [ "${_mlen__copy}" ]; do
+        _mlen__option="${_mlen__copy%%,*}"
+        _mlen__counter="$((${_mlen__counter} + 1))"
 
-        if [ X"${_arraylen__option}" = X"${_arraylen__copy}" ]; then
-            _arraylen__copy=""
+        if [ X"${_mlen__option}" = X"${_mlen__copy}" ]; then
+            _mlen__copy=""
         else
-            _arraylen__copy="${_arraylen__copy#*,}"
+            _mlen__copy="${_mlen__copy#*,}"
         fi
     done
 
-    printf "%s" "${_arraylen__counter}"
+    printf "%s\\n" "${_mlen__counter}"
 }
 
 _str2lower() {
     [ -z "${1}" ] && return 1
-    printf "%s\\n" "${@}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
+    printf "%s\\n" "${@}" | \
+        tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
 }
 
 _gen_rotate_opts() {
     [ -z "${1}" ] && return 1
-    _gen_rotate_opts__copy="${rotate}"
-    _gen_rotate_opts__string=""
+    _gropts__monitor="${1}"
+    _gropts__result=""
 
-    while [ "${_gen_rotate_opts__copy}" ]; do
-        _gen_rotate_opts__option="${_gen_rotate_opts__copy%%,*}"
-
-        case "${active_outputs}" in
-            *"${1}"*) _gen_rotate_opts__string="${_gen_rotate_opts__string}${1}.rotate.${_gen_rotate_opts__option}", ;;
+    _gropts__OLDIFS="$IFS"; IFS=","
+    for _gropts__rotation in ${ROTATE_OPTS}; do
+        case "${ACTIVE_MONITORS}" in
+            *"${_gropts__monitor}"*) _gropts__result="${_gropts__result}${_gropts__monitor}.rotate.${_gropts__rotation}", ;;
         esac
-
-        if [ X"${_gen_rotate_opts__option}" = X"${_gen_rotate_opts__copy}" ]; then
-            _gen_rotate_opts__copy=""
-        else
-            _gen_rotate_opts__copy="${_gen_rotate_opts__copy#*,}"
-        fi
     done
+    IFS="${_gropts__OLDIFS}"
 
-    printf "%s" "${_gen_rotate_opts__string}"
+    printf "%s\\n" "${_gropts__result}"
 }
 
 _gen_offauto_opts() {
     [ -z "${1}" ] && return 1
-    #never turn off laptop screen
-    [ X"${1}" = X"LVDS1" ] && return
+    _goopts__monitor="${1}"
+    _goopts__result=""
+    #never turn off laptop screens
+    [ X"${_goopts__monitor}" = X"LVDS1" ] && return
+    [ X"${_goopts__monitor}" = X"eDP-1" ] && return
 
-    _gen_offauto_opts__copy="${offauto}"
-    _gen_offauto_opts__string=""
-    #if [ X"${active_outputs_len}" = X"1" ]; then
-        #_gen_offauto_opts__copy="$(printf "%s" "${_gen_offauto_opts__copy}" | cut -d, -f2-)"
-    #fi
-
-    while [ "${_gen_offauto_opts__copy}" ]; do
-        _gen_offauto_opts__option="${_gen_offauto_opts__copy%%,*}"
-        _gen_offauto_opts__string="${_gen_offauto_opts__string}${1}.${_gen_offauto_opts__option}",
-
-        if [ X"${_gen_offauto_opts__option}" = X"${_gen_offauto_opts__copy}" ]; then
-            _gen_offauto_opts__copy=""
-        else
-            _gen_offauto_opts__copy="${_gen_offauto_opts__copy#*,}"
-        fi
+    _goopts__OLDIFS="$IFS"; IFS=","
+    for _goopts__state in ${OFFAUTO_OPTS}; do
+        case "${ACTIVE_MONITORS}" in
+            *"${_goopts__monitor}"*) _goopts__result="${_goopts__result}${_goopts__monitor}.${_goopts__state}", ;;
+        esac
     done
 
-    printf "%s" "${_gen_offauto_opts__string}"
+    printf "%s\\n" "${_goopts__result}"
 }
 
 _gen_resolution_opts() {
     [ -z "${1}" ] && return 1
+    _gropts__monitor="$(printf "%s\\n" "${1}" | awk '{gsub("-", "_");print;}')"
+    eval _gropts__available_resolutions="\$available_resolutions_in_${_gropts__monitor}"
 
-    eval _gen_resolution_opts__copy=\$mode_$1
-    _gen_resolution_opts__string=""
-
-    while [ "${_gen_resolution_opts__copy}" ]; do
-        _gen_resolution_opts__option="${_gen_resolution_opts__copy%%,*}"
-        _gen_resolution_opts__string="${_gen_resolution_opts__string}${1}.mode.${_gen_resolution_opts__option}",
-
-        if [ X"${_gen_resolution_opts__option}" = X"${_gen_resolution_opts__copy}" ]; then
-            _gen_resolution_opts__copy=""
-        else
-            _gen_resolution_opts__copy="${_gen_resolution_opts__copy#*,}"
-        fi
+    _gropts__OLDIFS="$IFS"; IFS=","
+    for _gropts__resolution in $_gropts__available_resolutions; do
+        _gropts__result="${_gropts__result}${1}.mode.${_gropts__resolution}",
     done
+    IFS="${_gropts__OLDIFS}"
 
-    printf "%s" "${_gen_resolution_opts__string}"
+    printf "%s\\n" "${_gropts__result}"
 }
 
 _gen_position_opts() {
     [ -z "${1}" ] && return 1
-    [ "${connected_outputs_len}" -lt "2" ] && return 1
-    case "${active_outputs}" in
-        *"${1}"*) return 1 ;;
+    _gpopts__monitor="${1}"
+    _gpopts__result=""
+
+    [ "${NUMBER_OF_CONNECTED_MONITORS}" -lt "2" ] && return 1
+
+    case "${ACTIVE_MONITORS}" in
+        *"${_gpopts__monitor}"*) return 1 ;;
     esac
 
-    _gen_position_opts__copy="${position}"
-    _gen_position_opts__string=""
-
-    while [ "${_gen_position_opts__copy}" ]; do
-        _gen_rotate_opts__option="${_gen_position_opts__copy%%,*}"
-
-        _gen_position_opts__string="${_gen_position_opts__string}${1}.${_gen_rotate_opts__option}.${active_outputs%%,*}",
-
-        if [ X"${_gen_rotate_opts__option}" = X"${_gen_position_opts__copy}" ]; then
-            _gen_position_opts__copy=""
-        else
-            _gen_position_opts__copy="${_gen_position_opts__copy#*,}"
-        fi
+    _gpopts__OLDIFS="$IFS"; IFS=","
+    for _gpopts__position in $POSITION_OPTS; do
+        _gpopts__result="${_gpopts__result}${_gpopts__monitor}.${_gpopts__position}.${ACTIVE_MONITORS%%,*}",
     done
+    IFS="${_gpopts__OLDIFS}"
 
-    printf "%s" "${_gen_position_opts__string}"
+    printf "%s\\n" "${_gpopts__result}"
 }
 
 _gen_mix_opts() {
     [ -z "${1}" ] && return 1
-    [ "${connected_outputs_len}" -lt "2" ] && return 1
-    case "${active_outputs}" in
-        *"${1}"*) return 1 ;;
+    _gmopts__monitor="${1}"
+    _gmopts__result=""
+
+    [ "${NUMBER_OF_CONNECTED_MONITORS}" -lt "2" ] && return 1
+
+    case "${ACTIVE_MONITORS}" in
+        *"${_gmopts__monitor}"*) return 1 ;;
     esac
 
-    eval _gen_mix_opts__resolutions=\$mode_$1
-    _gen_mix_opts__positions="${position}"
-    _gen_position_opts__string=""
+    _gmopts__monitor="$(printf "%s\\n" "${1}" | awk '{gsub("-", "_");print;}')"
+    eval _gmopts__available_resolutions="\$available_resolutions_in_${_gmopts__monitor}"
+    _gmopts__positions="${POSITION_OPTS}"
 
-    while [ "${_gen_mix_opts__resolutions}" ]; do
-        _gen_mix_opts__resolution="${_gen_mix_opts__resolutions%%,*}"
-
+    _gpopts__OLDIFS="$IFS"; IFS=","
+    for _gmopts__resolution in $_gmopts__available_resolutions; do
         #comment to only provide all options to the highest resolution
-        _gen_mix_opts__positions="${position}"
-        while [ "${_gen_mix_opts__positions}" ]; do
-            _gen_mix_opts__position="${_gen_mix_opts__positions%%,*}"
-            _gen_position_opts__string="${_gen_position_opts__string}${1}.mode.${_gen_mix_opts__resolution}.${_gen_mix_opts__position}.${active_outputs%%,*}",
-
-            if [ X"${_gen_mix_opts__position}" = X"${_gen_mix_opts__positions}" ]; then
-                _gen_mix_opts__positions=""
-            else
-                _gen_mix_opts__positions="${_gen_mix_opts__positions#*,}"
-            fi
+        for _gmopts__position in $POSITION_OPTS; do
+            _gmopts__result="${_gmopts__result}${1}.mode.${_gmopts__resolution}.${_gmopts__position}.${ACTIVE_MONITORS%%,*}",
         done
-
-        if [ X"${_gen_mix_opts__resolution}" = X"${_gen_mix_opts__resolutions}" ]; then
-            _gen_mix_opts__resolutions=""
-        else
-            _gen_mix_opts__resolutions="${_gen_mix_opts__resolutions#*,}"
-        fi
     done
 
-    printf "%s" "${_gen_position_opts__string}"
+    printf "%s\\n" "${_gmopts__result}"
 }
 
 _reload_wallpaper() {
@@ -180,82 +146,80 @@ if ! command -v "dmenu" >/dev/null 2>&1; then
     printf "%s\\n" "install 'dmenu' to run this program" >&2
     exit 1
 elif ! command -v "xrandr" >/dev/null 2>&1; then
-    _die "install 'xrandr' to run this program"
+    _dmenu_die "install 'xrandr' to run this program"
 fi
 
 xrandr_output="$(xrandr)"
-all_outputs="$(printf "%s" "${xrandr_output}"       | awk '/^V|^L|^H|^D/ {print $1","}'     | tr -d '\n')"
-connected_outputs="$(printf "%s" "${xrandr_output}" | awk '/ connected/ {print $1","}'      | tr -d '\n')"
-active_outputs="$(printf "%s" "${xrandr_output}"    | awk '/ connected [^(]/ {print $1","}' | tr -d '\n')"
-rotate="normal,inverted,left,right"
-offauto="off,auto"
-position="above,below,same-as,left-of,right-of"
-connected_outputs_len="$(_arraylen "${connected_outputs}")"
-active_outputs_len="$(_arraylen "${active_outputs}")"
+all_monitors="$(printf "%s\\n" "${xrandr_output}"       | \
+    awk '/^VGA|^LVDS|^HDMI|^D|^eDP/ {print $1","}' | tr -d '\n')"
+connected_monitors="$(printf "%s\\n" "${xrandr_output}" | \
+    awk '/ connected/  {print $1","}' | tr -d '\n')"
 
-[ -z "${connected_outputs}" ] && _die "unable to detect screen interfaces"
+ACTIVE_MONITORS="$(printf "%s\\n" "${xrandr_output}"    | awk '/ connected [^(]/ {print $1","}'  | tr -d '\n')"
+NUMBER_OF_CONNECTED_MONITORS="$(_number_of_monitors "${connected_monitors}")"
+NUMBER_OF_ACTIVE_MONITORS="$(_number_of_monitors "${ACTIVE_MONITORS}")"
+ROTATE_OPTS="normal,inverted,left,right"
+OFFAUTO_OPTS="off,auto"
+POSITION_OPTS="above,below,same-as,left-of,right-of"
 
-#create mode for each output
-outputs_copy="${connected_outputs}"
-while [ "${outputs_copy}" ]; do
-    outputs_option="${outputs_copy%%,*}"
-    mode_tmp="$(printf "%s" "${xrandr_output}" | awk '/'"${outputs_option}"'/ {flag=1;next} /^[A-Za-z]/{flag=0} flag {print $1","}' | \
-                sort -nr | tr -d '\n')"
-    eval mode_"${outputs_option}"=\$mode_tmp
-    mode_tmp=""
+[ -z "${connected_monitors}" ] && _dmenu_die "unable to detect screen interfaces"
 
-    if [ X"${outputs_option}" = X"${outputs_copy}" ]; then
-        outputs_copy=""
-    else
-        outputs_copy="${outputs_copy#*,}"
-    fi
-done
+#create resolution variables for each monitor
+OLDIFS="${IFS}"; IFS=","
+for monitor in ${connected_monitors}; do
+    available_resolutions="$(printf "%s\\n" "${xrandr_output}" | \
+        awk '/'"${monitor}"'/ {flag=1;next} /^[A-Za-z]/{flag=0} flag {print $1","}' | \
+        sort -nr | tr -d '\n')"
+    monitor="$(printf "%s\\n" "${monitor}" | awk '{gsub("-", "_");print;}')"
+    eval available_resolutions_in_"${monitor}"=\$available_resolutions
+    available_resolutions=""
+done; monitor=""
 
-OLDIFS="${IFS}"
-IFS=,
-for output in ${connected_outputs}; do
+#generate options
+for monitor in ${connected_monitors}; do
     #mix resolution and position entries
-    options="${options}$(_gen_mix_opts "${output%%,*}")"
+    options="${options}$(_gen_mix_opts "${monitor%%,*}")"
     #rotate entries
-    options="${options}$(_gen_rotate_opts "${output%%,*}")"
+    options="${options}$(_gen_rotate_opts "${monitor%%,*}")"
     #resolution entries
-    options="${options}$(_gen_resolution_opts "${output%%,*}")"
+    options="${options}$(_gen_resolution_opts "${monitor%%,*}")"
     #position entries
-    options="${options}$(_gen_position_opts "${output%%,*}")"
+    options="${options}$(_gen_position_opts "${monitor%%,*}")"
     #off-auto entries
-    [ X"${active_outputs_len}" = X"1" ] && continue
-    options="${options}$(_gen_offauto_opts "${output%%,*}")"
+    [ X"${NUMBER_OF_ACTIVE_MONITORS}" = X"1" ] && continue
+    options="${options}$(_gen_offauto_opts "${monitor%%,*}")"
 done
 
-#show off entries for every detected device when there is no cable attached
-#useful when you forgot to run dmenu-xrandr to disconnect gracesfully
-#the monitor and wanna get back your environment
-if [ X"${active_outputs_len}" = X"1" ]; then
-    for output in ${all_outputs}; do
-        options="${options}$(_gen_offauto_opts "${output%%,*}")"
+#show entries for every detected device when there is no cable attached
+#useful when you forget to disconnect gracesfully
+if [ X"${NUMBER_OF_ACTIVE_MONITORS}" = X"1" ]; then
+    for monitor in ${all_monitors}; do
+        options="${options}$(_gen_offauto_opts "${monitor%%,*}")"
     done
 fi
 IFS="${OLDIFS}"
 
-options="$(printf "%s" "${options}"   | sed 's:,:\n:g')"
-choice="$(printf "%b\\n" "${options}" | ${DMENU})"
-printf "%s\\n" "${choice}"
+options="$(printf "%s\\n" "${options}" | tr ',' '\n')"
+selected_option="$(printf "%b\\n" "${options}"  | ${DMENU})"
 
-[ -z "${choice}" ] && exit 1
+printf "%s\\n" "[I] selected option: ${selected_option:-none}"
 
-cmd="xrandr --output $(printf "%s" "${choice}" | cut -d. -f1)"
-case $(printf "%s" "${choice}" | cut -d. -f2) in
+[ -z "${selected_option}" ] && exit 1
+
+cmd="xrandr --output $(printf "%s\\n" "${selected_option}" | cut -d. -f1)"
+case $(printf "%s\\n" "${selected_option}" | cut -d. -f2) in
     mode)
-        if [ -n "$(printf "%s" "${choice}" | cut -d. -f4)" ]; then
-            cmd="${cmd}"" --$(printf "%s" "${choice}" | cut -d. -f2) ""$(printf "%s" "${choice}" | cut -d. -f3)"
-            cmd="${cmd}"" --$(printf "%s" "${choice}" | cut -d. -f4) ""$(printf "%s" "${choice}" | cut -d. -f5)"
+        if [ -n "$(printf "%s\\n" "${selected_option}" | cut -d. -f4)" ]; then
+            cmd="${cmd}"" --$(printf "%s\\n" "${selected_option}" | cut -d. -f2) ""$(printf "%s\\n" "${selected_option}" | cut -d. -f3)"
+            cmd="${cmd}"" --$(printf "%s\\n" "${selected_option}" | cut -d. -f4) ""$(printf "%s\\n" "${selected_option}" | cut -d. -f5)"
         else
-            cmd="${cmd}"" --$(printf "%s" "${choice}" | cut -d. -f2) ""$(printf "%s" "${choice}" | cut -d. -f3)"
+            cmd="${cmd}"" --$(printf "%s\\n" "${selected_option}" | cut -d. -f2) ""$(printf "%s\\n" "${selected_option}" | cut -d. -f3)"
         fi
         ;;
-    auto|off) cmd="${cmd}"" --$(printf "%s" "${choice}" | cut -d. -f2)" ;;
-    same-as)  cmd="${cmd}"" --auto --$(printf "%s" "${choice}" | cut -d. -f2) ""$(printf "%s" "${choice}" | cut -d. -f3)" ;;
-    *)        cmd="${cmd}"" --$(printf "%s" "${choice}" | cut -d. -f2) ""$(printf "%s" "${choice}" | cut -d. -f3)" ;;
+    auto|off) cmd="${cmd}"" --$(printf "%s\\n" "${selected_option}" | cut -d. -f2)" ;;
+    same-as)  cmd="${cmd}"" --auto --$(printf "%s\\n" "${selected_option}" | cut -d. -f2) ""$(printf "%s\\n" "${selected_option}" | cut -d. -f3)" ;;
+    *)        cmd="${cmd}"" --$(printf "%s\\n" "${selected_option}" | cut -d. -f2) ""$(printf "%s\\n" "${selected_option}" | cut -d. -f3)" ;;
 esac
 
+printf "%s\\n" "[I] exec: ${cmd}"
 sh -c "${cmd}" && _reload_wallpaper
