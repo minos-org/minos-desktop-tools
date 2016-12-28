@@ -1,5 +1,5 @@
 #!/bin/sh
-#description: control player apps, currently mpd,mplayer,mpv
+#description: control player apps
 #usage: player-ctrl [play|pause|toggle|next|previous]
 
 #example: player-ctrl next
@@ -35,24 +35,43 @@ _mpd() {
     [ -z "${1}" ] && return 1
     case "${1}" in
         play)     mpc play >/dev/null ;;
-        pause)    [ "$(mpc status | grep playing)" ] && mpc pause 1>/dev/null ;;
+        pause)    mpc pause 1>/dev/null ;;
         toggle)   [ "$(mpc status | grep playing)" ] && mpc pause 1>/dev/null || mpc play 1>/dev/null ;;
         next)     mpc next > /dev/null ;;
         previous) mpc prev > /dev/null ;;
     esac
 }
 
-_player_ctrl() {
+_spotify() {
     [ -z "${1}" ] && return 1
-    if [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
-        if [ "$(mpc status | grep playing)" ]; then
-            mpc pause 1>/dev/null
-        else
+    case "${1}" in
+        play)     dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Play      >/dev/null ;;
+        pause)    dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Pause     >/dev/null ;;
+        toggle)   dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.PlayPause >/dev/null ;;
+        next)     dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Next      >/dev/null ;;
+        previous) dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Previous  >/dev/null ;;
+    esac
+}
+
+_player_ctrl() {
+    #preference
+    #1.- spotify
+    #2.- mplayer|mpd
+    #3.- mpd
+    [ -z "${1}" ] && return 1
+
+    case "${1}" in
+        'toggle'|'pause')
+            [ "$(mpc status | grep playing)" ] && mpc pause 1>/dev/null ;;
+    esac
+
+    if [ -n "$(pgrep spotify)" ]; then
+        _spotify "${1}"
+    elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
             _mplayer "${1}"
-        fi
-        return "${?}"
+    elif [ -n "$(pgrep mpd)" ]; then
+        _mpd "${1}"
     fi
-    [ -n "$(pgrep mpd)" ] && _mpd "${1}" || :
 }
 
 if [ ! -t 0 ]; then
