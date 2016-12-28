@@ -62,7 +62,7 @@ _player_ctrl() {
 
     case "${1}" in
         'toggle'|'pause')
-            [ "$(mpc status | grep playing)" ] && mpc pause 1>/dev/null ;;
+            [ "$(mpc status | grep playing)" ] && exec mpc pause 1>/dev/null ;;
     esac
 
     if [ -n "$(pgrep spotify)" ]; then
