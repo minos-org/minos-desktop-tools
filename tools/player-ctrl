@@ -60,15 +60,20 @@ _player_ctrl() {
     #3.- mpd
     [ -z "${1}" ] && return 1
 
-    case "${1}" in
-        'toggle'|'pause')
-            [ "$(mpc status | grep playing)" ] && exec mpc pause 1>/dev/null ;;
-    esac
-
     if [ -n "$(pgrep spotify)" ]; then
-        _spotify "${1}"
+        if [ "$(mpc status | grep playing)" ]; then
+            _mpd pause 1>/dev/null
+        elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
+            _mplayer pause
+        else
+            _spotify "${1}"
+        fi
     elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
+        if [ "$(mpc status | grep playing)" ]; then
+            _mpd pause 1>/dev/null
+        else
             _mplayer "${1}"
+        fi
     elif [ -n "$(pgrep mpd)" ]; then
         _mpd "${1}"
     fi
