@@ -34,22 +34,22 @@ _mplayer() {
 _mpd() {
     [ -z "${1}" ] && return 1
     case "${1}" in
-        play)     mpc play >/dev/null ;;
-        pause)    mpc pause 1>/dev/null ;;
-        toggle)   [ "$(mpc status | grep playing)" ] && mpc pause 1>/dev/null || mpc play 1>/dev/null ;;
-        next)     mpc next > /dev/null ;;
-        previous) mpc prev > /dev/null ;;
+        play)     mpc play  ;;
+        pause)    mpc pause ;;
+        toggle)   [ "$(mpc status | grep playing)" ] && mpc pause || mpc play ;;
+        next)     mpc next  ;;
+        previous) mpc prev  ;;
     esac
 }
 
 _spotify() {
     [ -z "${1}" ] && return 1
     case "${1}" in
-        play)     dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Play      >/dev/null ;;
-        pause)    dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Pause     >/dev/null ;;
-        toggle)   dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.PlayPause >/dev/null ;;
-        next)     dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Next      >/dev/null ;;
-        previous) dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Previous  >/dev/null ;;
+        play)     dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Play      ;;
+        pause)    dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Pause     ;;
+        toggle)   dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.PlayPause ;;
+        next)     dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Next      ;;
+        previous) dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Previous  ;;
     esac
 }
 
@@ -62,7 +62,7 @@ _player_ctrl() {
 
     if [ -n "$(pgrep spotify)" ]; then
         if [ "$(mpc status | grep playing)" ]; then
-            _mpd pause 1>/dev/null
+            _mpd pause
         elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
             _mplayer pause
         else
@@ -70,7 +70,7 @@ _player_ctrl() {
         fi
     elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
         if [ "$(mpc status | grep playing)" ]; then
-            _mpd pause 1>/dev/null
+            _mpd pause
         else
             _mplayer "${1}"
         fi
