@@ -44,12 +44,46 @@ _mpd() {
 
 _spotify() {
     [ -z "${1}" ] && return 1
+
+    _spotify_print_current_song() {
+        sleep 0.2 || sleep 1
+        dbus-send --print-reply \
+                  --dest=org.mpris.MediaPlayer2.spotify \
+        /org/mpris/MediaPlayer2 org.freedesktop.DBus.Properties.Get \
+        string:org.mpris.MediaPlayer2.Player string:Metadata | \
+            awk -v status="${1}" 'BEGIN {RS=" entry\\("; FS="\""};
+            /artist/ {artist = $4}; /title/ {title = $4} END {
+            if (length(status) == 0) {if(length(artist) == 0)
+                {print title} else {print artist" - "title}}
+            else {print artist" - "title, status}}'
+    }
+
     case "${1}" in
-        play)     dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Play      ;;
-        pause)    dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Pause     ;;
-        toggle)   dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.PlayPause ;;
-        next)     dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Next      ;;
-        previous) dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Previous  ;;
+        play)     dbus-send --print-reply \
+                            --dest=org.mpris.MediaPlayer2.spotify \
+                  /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Play \
+                            >/dev/null && _spotify_print_current_song
+                  ;;
+        pause)    dbus-send --print-reply \
+                            --dest=org.mpris.MediaPlayer2.spotify \
+                  /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Pause \
+                            >/dev/null && _spotify_print_current_song "[PAUSED]"
+                  ;;
+        toggle)   dbus-send --print-reply \
+                            --dest=org.mpris.MediaPlayer2.spotify \
+                  /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.PlayPause \
+                            >/dev/null && _spotify_print_current_song
+                  ;;
+        next)     dbus-send --print-reply \
+                            --dest=org.mpris.MediaPlayer2.spotify \
+                  /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Next \
+                            >/dev/null && _spotify_print_current_song
+                  ;;
+        previous) dbus-send --print-reply \
+                            --dest=org.mpris.MediaPlayer2.spotify \
+                  /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Previous \
+                            >/dev/null && _spotify_print_current_song
+                  ;;
     esac
 }
 
