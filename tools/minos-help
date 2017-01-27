@@ -2,8 +2,10 @@
 #description: show shortcut information in minos
 #usage: minos-help
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]"
+    printf "%s\\n" "Usage: ${progname} [options]"
     printf "%s\\n" "Minos help window."
     printf "\\n"
     printf "%s\\n" "  -h, --help   show this help message and exit"
@@ -30,7 +32,7 @@ for arg; do #parse options
     case "${arg}" in
         --) shift; break  ;;
         -h|--help) _usage && exit ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 

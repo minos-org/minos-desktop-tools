@@ -5,8 +5,10 @@
 
 #https://wiki.archlinux.org/index.php/Feh#File_Browser_Image_Launcher
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') image ..."
+    printf "%s\\n" "Usage: ${progname} image ..."
     printf "%s\\n" "Browse image launcher."
 }
 
@@ -128,7 +130,7 @@ for arg in "${@}"; do #parse options
     case "${arg}" in
         --) shift; break  ;;
         -h|--help) _usage && exit ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 

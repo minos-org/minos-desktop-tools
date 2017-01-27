@@ -5,8 +5,10 @@
 #example: minos-config wallpaper
 #/usr/share/minos/wallpapers/minos.png
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] key"
+    printf "%s\\n" "Usage: ${progname} [options] key"
     printf "%s\\n" "Query tool for minos configuration files."
     printf "\\n"
     printf "%s\\n" "  -c, --config        read values from this configuration file"
@@ -76,7 +78,7 @@ for arg; do #parse options
             fi
             ;;
         -n|--no-fallback) shift && no_fallback="1" ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 [ "${no_fallback}" ] && [ -z "${config_file}" ] && _die "Option '-n' can only be invoked in addition with a '-c' option"

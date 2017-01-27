@@ -8,8 +8,10 @@
 #/home/chilicuil/.mozilla/firefox/
 #...
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] [dir]"
+    printf "%s\\n" "Usage: ${progname} [options] [dir]"
     printf "%s\\n" "Backup Mozilla configurations."
     printf "\\n"
     printf "%s\\n" "  -n           number of copies to save"
@@ -109,7 +111,7 @@ for arg; do #parse options
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 

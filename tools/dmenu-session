@@ -5,12 +5,13 @@
 #example: dmenu-session
 #appears a gui menu appears asking for which action to be taken
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 #looks better with a xft powered dmenu:
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [subcommand]"
+    printf "%s\\n" "Usage: ${progname} [subcommand]"
     printf "%s\\n" "Dmenu based session menu."
     printf "%s\\n"
     printf "%s\\n" "  -h, --help   show this help message and exit"
@@ -253,7 +254,7 @@ fi
 
 if [ -z "${1}" ]; then
     if ! command -v "dmenu" >/dev/null 2>&1; then
-        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): install 'dmenu' to run this program" >&2
+        printf "%s\\n" "${progname}: install 'dmenu' to run this program" >&2
         exit 1
     fi
     choice="$(printf "%b\\n" "lock\nrelogin\nlogout\nreboot\nshutdown\nsuspend\nhibernate" | ${DMENU})"

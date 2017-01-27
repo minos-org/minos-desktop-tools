@@ -5,8 +5,10 @@
 #example: player-ctrl next
 #play next song in queue
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') play|pause|toggle|next|previous"
+    printf "%s\\n" "Usage: ${progname} play|pause|toggle|next|previous"
     printf "%s\\n" "Control player apps."
 }
 

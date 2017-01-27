@@ -3,9 +3,10 @@
 #             if no name is provided save image in $HOME with a random name
 #             otherwise use the full name provided and add a .png sufix
 #Usage: screenshot [-s] [output]
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] [output-file]"
+    printf "%s\\n" "Usage: ${progname} [options] [output-file]"
     printf "%s\\n" "Take a screenshot in 3.., 2.., 1."
     printf "\\n"
     printf "%s\\n" "  -s           select a rectangle to save"
@@ -73,7 +74,7 @@ else
             --) shift; break  ;;
             -h|--help) _usage && exit ;;
             -s) flag_select="y"; shift; ;;
-            -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+            -*) _die "${progname}: unrecognized option '${arg}'" ;;
         esac
     done
     if [ -z "${1}" ]; then

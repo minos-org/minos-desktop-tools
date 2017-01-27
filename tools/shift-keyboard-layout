@@ -4,6 +4,7 @@
 #change keyboard layout to the next configured one
 
 default_layouts="latam,us,ru" #see /usr/share/X11/xkb/rules/base.lst
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _str2lower() {
     [ -z "${1}" ] && return 1
@@ -59,9 +60,11 @@ fi
 for arg; do #parse options
     case "${arg}" in
         --) shift; break ;;
-        -h|--help) { printf "Usage: %b\\n" "$(expr "${0}" : '.*/\([^/]*\)')\\nChange keyboard layout (see minos-config)."; exit; } ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" >&2
-            printf "Usage: %b\\n" "$(expr "${0}" : '.*/\([^/]*\)')\\nChange keyboard layout (see minos-config)." >&2
+        -h|--help) {
+            printf "Usage: %b\\n" "${progname}\\nChange keyboard layout (see minos-config)."
+            exit; } ;;
+        -*) printf "%s\\n" "${progname}: unrecognized option '${arg}'" >&2
+            printf "Usage: %b\\n" "${progname}\\nChange keyboard layout (see minos-config)." >&2
             exit 1
             ;;
     esac

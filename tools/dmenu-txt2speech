@@ -5,12 +5,13 @@
 #example: dmenu-txt2speech
 #a gui menu appears asking for which phrase to say, default to english voice
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 #looks better with a xft powered dmenu:
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #aaffaf'
 
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [string] ..."
+    printf "%s\\n" "Usage: ${progname} [string] ..."
     printf "%s\\n" "Dmenu txt2speech."
     printf "%s\\n"
     printf "%s\\n" "  -h, --help   show this help message and exit"

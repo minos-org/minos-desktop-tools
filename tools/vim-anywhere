@@ -5,6 +5,8 @@
 
 #usage: vim-anywhere (intended to be launched from a keyboard shortcut)
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
 _notify() {
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
@@ -28,7 +30,7 @@ _notify() {
 }
 
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]"
+    printf "%s\\n" "Usage: ${progname} [options]"
     printf "%s\\n" "open a temporary file with [g]vim. Once closed, copy the contents to the system clipboard."
     printf "\\n"
     printf "%s\\n" "  -h, --help      show this help message and exit"
@@ -45,7 +47,7 @@ for arg; do
         --) shift; break ;;
         -h|--help) _usage && exit ;;
         -v|--verbose) set -x      ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 
