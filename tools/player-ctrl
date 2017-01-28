@@ -8,7 +8,7 @@
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} play|pause|toggle|next|previous"
+    printf "%s\\n" "Usage: ${progname} play|pause|status|print [PARAM]|toggle|next|previous"
     printf "%s\\n" "Control player apps."
 }
 
@@ -17,31 +17,11 @@ _die() {
     _usage >&2; exit 1
 }
 
-_mplayer() {
+_str2lower() {
     [ -z "${1}" ] && return 1
-    _mplayer__fifo="$(cat etc/mplayer/mplayer.conf ~/.mplayer/config 2>/dev/null | \
-        awk '/^input=file=/ {sub(/^input=file=/, ""); print}' | tail -1)"
-
-    [ -n "${_mplayer__fifo}" ] && [ ! -e "${_mplayer__fifo}" ] && mkfifo "${_mplayer__fifo}"
-
-    [ ! -p "${_mplayer__fifo}" ] && return 1
-    case "${1}" in
-        play|toggle) printf "%s\\n" "pause"         > "${_mplayer__fifo}" ;;
-        pause)       printf "%s\\n" "pausing pause" > "${_mplayer__fifo}" ;;
-        next)        printf "%s\\n" "pt_step 1"     > "${_mplayer__fifo}" ;;
-        previous)    printf "%s\\n" "pt_step -1"    > "${_mplayer__fifo}" ;;
-    esac
-}
-
-_mpd() {
-    [ -z "${1}" ] && return 1
-    case "${1}" in
-        play)     mpc play  ;;
-        pause)    mpc pause ;;
-        toggle)   [ "$(mpc status | grep playing)" ] && mpc pause || mpc play ;;
-        next)     mpc next  ;;
-        previous) mpc prev  ;;
-    esac
+    printf "%s\\n" "${@}" | \
+    tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
+    # tr '[:upper:]' '[:lower:]'
 }
 
 _dbus_send() {
@@ -59,6 +39,44 @@ _dbus_send() {
     else
         dbus-send ${@}
     fi
+}
+
+_mplayer() {
+    [ -z "${1}" ] && return 1
+    _mplayer__fifo="$(cat etc/mplayer/mplayer.conf ~/.mplayer/config 2>/dev/null | \
+        awk '/^input=file=/ {sub(/^input=file=/, ""); print}' | tail -1)"
+
+    [ -n "${_mplayer__fifo}" ] && [ ! -e "${_mplayer__fifo}" ] && mkfifo "${_mplayer__fifo}"
+
+    [ ! -p "${_mplayer__fifo}" ] && return 1
+    case "${1}" in
+        play|toggle) printf "%s\\n" "pause"         > "${_mplayer__fifo}" ;;
+        pause)       printf "%s\\n" "pausing pause" > "${_mplayer__fifo}" ;;
+        status|print) : ;;
+        next)        printf "%s\\n" "pt_step 1"     > "${_mplayer__fifo}" ;;
+        previous)    printf "%s\\n" "pt_step -1"    > "${_mplayer__fifo}" ;;
+        print)       case "${2}" in
+                        ''|title) : ;;
+                     esac
+                     ;;
+    esac
+}
+
+_mpd() {
+    [ -z "${1}" ] && return 1
+    case "${1}" in
+        play)     mpc play   ;;
+        pause)    mpc pause  ;;
+        status)   mpc status ;;
+        toggle)   [ "$(mpc status | grep playing)" ] && mpc pause || mpc play ;;
+        next)     mpc next   ;;
+        previous) mpc prev   ;;
+        print)
+            case "${2}" in
+                ''|title) mpc status|awk 'NR == 1 {gsub(/"/,""); gsub(/\\/,"/"); print}' ;;
+            esac
+            ;;
+    esac
 }
 
 _spotify() {
@@ -88,6 +106,7 @@ _spotify() {
                   /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Pause \
                              >/dev/null && _spotify_print_current_song "[PAUSED]"
                   ;;
+        status)    _spotify_print_current_song ;;
         toggle)   _dbus_send --print-reply \
                              --dest=org.mpris.MediaPlayer2.spotify \
                   /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.PlayPause \
@@ -103,6 +122,11 @@ _spotify() {
                   /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Previous \
                              >/dev/null && _spotify_print_current_song
                   ;;
+        print)
+            case "${2}" in
+                ''|title) _spotify_print_current_song ;;
+            esac
+            ;;
     esac
 }
 
@@ -119,16 +143,16 @@ _player_ctrl() {
         elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
             _mplayer pause
         else
-            _spotify "${1}"
+            _spotify "${@}"
         fi
     elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
         if [ "$(mpc status | grep playing)" ]; then
             _mpd pause
         else
-            _mplayer "${1}"
+            _mplayer "${@}"
         fi
     elif [ -n "$(pgrep mpd)" ]; then
-        _mpd "${1}"
+        _mpd "${@}"
     fi
 }
 
@@ -137,16 +161,24 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ X"${#}" != X"1" ] && _die
+[ "${#}" -lt "1" ] && _die
 
-case "${1}" in
-         pl*) _param="play"     ;;
-    pa*|stop) _param="pause"    ;;
-         pr*) _param="previous" ;;
-          n*) _param="next"     ;;
-          t*) _param="toggle"   ;;
+case "$(_str2lower "${1}")" in
+         pl*) _subcmd="play"     ;;
+    pa*|stop) _subcmd="pause"    ;;
+        pre*) _subcmd="previous" ;;
+          n*) _subcmd="next"     ;;
+          t*) _subcmd="toggle"   ;;
+        sta*) _subcmd="status"   ;;
+        pri*) _subcmd="print"
+              if [ -n "${2}" ]; then
+                  case "$(_str2lower "${2}")" in
+                      t*) _param="title" ;;
+                  esac
+              fi
+            ;;
    -h|--help) _usage && exit    ;;
            *) _die ;;
 esac
 
-_player_ctrl "${_param}"
+_player_ctrl "${_subcmd}" "${_param}"
