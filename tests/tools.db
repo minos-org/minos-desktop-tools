@@ -271,9 +271,9 @@ player-ctrl cui; test X"${?}"                = X"1"
 player-ctrl -h; test X"${?}"                 = X"0"
 printf "%s" '-h' | player-ctrl; test X"${?}" = X"0"
 test X"$(player-ctrl | head -1)"                          = X""
-test X"$(player-ctrl 2>&1 | head -1)"                     = X"Usage: player-ctrl play|pause|toggle|next|previous"
-test X"$(player-ctrl cui 2>&1 | head -1)"                 = X"Usage: player-ctrl play|pause|toggle|next|previous"
-test X"$(printf "%s" 'cui' | player-ctrl 2>&1 | head -1)" = X"Usage: player-ctrl play|pause|toggle|next|previous"
+test X"$(player-ctrl 2>&1 | head -1)"                     = X"Usage: player-ctrl play|pause|status|print [PARAM]|toggle|next|previous"
+test X"$(player-ctrl cui 2>&1 | head -1)"                 = X"Usage: player-ctrl play|pause|status|print [PARAM]|toggle|next|previous"
+test X"$(printf "%s" 'cui' | player-ctrl 2>&1 | head -1)" = X"Usage: player-ctrl play|pause|status|print [PARAM]|toggle|next|previous"
 @end
 
 @begin{txt2speech}
