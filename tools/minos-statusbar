@@ -2,8 +2,9 @@
 #description: pretty i3 bar, requires conky
 #usage: use only as argument in status_command (~/.i3/config)
 
- #minos statusbar looks better with the xbc icon patch
+#minos statusbar looks better with the xbc icon patch
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
+minos_statusbar="/tmp/minos-statusbar"
 
 _usage() {
     printf "%s\\n" "Usage: ${progname} [options]"
@@ -16,6 +17,26 @@ _die() {
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
+}
+
+_get_1st_network_interface() {
+    #prefer active interfaces
+    for interface in $(cat /proc/net/dev | awk -F':'  'NR > 2 {print $1}'); do
+        if printf "%s\\n" "${interface}" | grep "${@}" >/dev/null 2>&1; then
+            ip addr show "${interface}" | \
+                grep '<BROADCAST' >/dev/null 2>&1 && \
+                printf "%s\\n" "${interface}" && return 0
+        fi
+    done
+
+    #but if there is none, output the first found
+    for interface in $(cat /proc/net/dev | awk -F':'  'NR > 2 {print $1}'); do
+        if printf "%s\\n" "${interface}" | grep "${@}" >/dev/null 2>&1; then
+            ip addr show "${interface}" | \
+                grep ',BROADCAST,' >/dev/null 2>&1 && \
+                printf "%s\\n" "${interface}" && return 0
+        fi
+    done
 }
 
 exec 0>/dev/null #i3bar click events (58e68) make impossible to read stdin without crashing it
@@ -43,31 +64,38 @@ fi
 
 [ X"$(minos-config statusbar 2>/dev/null)" = X"no" ] && return 0
 
-minos_statusbar="$(minos-config m-statusbar-config 2>/dev/null)"
-if [ -z "${minos_statusbar}" ]; then
+minos_statusbar_base="$(minos-config m-statusbar-config 2>/dev/null)"
+if [ -z "${minos_statusbar_base}" ]; then
     if [ -f "${HOME}"/.minos/statusbar ]; then
-        minos_statusbar="${HOME}/.minos/statusbar"
+        minos_statusbar_base="${HOME}/.minos/statusbar"
     elif [ -f /etc/minos/statusbar ]; then
-        minos_statusbar="/etc/minos/statusbar"
+        minos_statusbar_base="/etc/minos/statusbar"
     fi
 fi
 
-if [ -z "${minos_statusbar}" ]; then
-    printf "%s\\n" "minos-statusbar: couldn't find config file, exiting." >&2
+if [ -z "${minos_statusbar_base}" ]; then
+    printf "%s\\n" "minos-statusbar: couldn't find a valid config file, exiting." >&2
     return 1
 else
-    minos_statusbar_icons="$(minos-config m-statusbar-icons 2>/dev/null)"
-    [ -z "${minos_statusbar_icons}" ] && minos_statusbar_icons="sm4tik"
-    sed "s:sm4tik:${minos_statusbar_icons}:g" ${minos_statusbar} > /tmp/minos-statusbar
+    statusbar_icons="$(minos-config m-statusbar-icons 2>/dev/null)"
+    [ -z "${statusbar_icons}" ] && statusbar_icons="sm4tik"
+    statusbar_wireless="$(_get_1st_network_interface "wl*")"
+    statusbar_ethernet="$(_get_1st_network_interface "eth*\|en*")"
+
+    cp "${minos_statusbar_base}" "${minos_statusbar}"
+
+    sed -i "s:/sm4tik/:/${statusbar_icons}/:g"      "${minos_statusbar}"
+    sed -i "s:WL_INTERFACE:${statusbar_wireless}:g" "${minos_statusbar}"
+    sed -i "s:EN_INTERFACE:${statusbar_ethernet}:g" "${minos_statusbar}"
 
     #http://www.reddit.com/r/unixporn/comments/22jgrh/debiani3_minimalist_crisp_clear/
     echo "{\"version\":1}"
     echo '['
     echo '[] ,'
-    conky -c /tmp/minos-statusbar
+    conky -c "${minos_statusbar}"
     #if command -v "setsid" >/dev/null 2>&1; then
-        #(setsid conky -c /tmp/minos-statusbar &)
+        #(setsid conky -c "${minos_statusbar}" &)
     #else
-        #exec conky -c /tmp/minos-statusbar
+        #exec conky -c "${minos_statusbar}"
     #fi
 fi
