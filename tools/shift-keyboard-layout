@@ -75,7 +75,7 @@ if ! command -v "setxkbmap" >/dev/null; then
 fi
 
 current_layout="$(setxkbmap -query | awk '/layout/ {print $2}')"
-layouts="$(minos-config m-keyboard-config 2>/dev/null)"
+layouts="$(minos-config keyboard-layouts 2>/dev/null)"
 [ -z "${layouts}" ] && layouts="${default_layouts}" || layouts="$(_return_valid_layouts "${layouts}")"
 d_layouts="${layouts}"
 c_layouts="${layouts}"
