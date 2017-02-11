@@ -53,7 +53,7 @@ for arg; do #parse options
     esac
 done
 
-progname="$(minos-config m-statusbar 2>/dev/null)"
+progname="$(minos-config statusbar 2>/dev/null)"
 if [ ! -z "${progname}" ]; then
     case "${progname}" in
         minos-statusbar) : ;;
@@ -64,7 +64,7 @@ fi
 
 [ X"$(minos-config statusbar 2>/dev/null)" = X"no" ] && return 0
 
-minos_statusbar_base="$(minos-config m-statusbar-config 2>/dev/null)"
+minos_statusbar_base="$(minos-config statusbar-config 2>/dev/null)"
 if [ -z "${minos_statusbar_base}" ]; then
     if [ -f "${HOME}"/.minos/statusbar ]; then
         minos_statusbar_base="${HOME}/.minos/statusbar"
@@ -77,7 +77,7 @@ if [ -z "${minos_statusbar_base}" ]; then
     printf "%s\\n" "minos-statusbar: couldn't find a valid config file, exiting." >&2
     return 1
 else
-    statusbar_icons="$(minos-config m-statusbar-icons 2>/dev/null)"
+    statusbar_icons="$(minos-config statusbar-icons 2>/dev/null)"
     [ -z "${statusbar_icons}" ] && statusbar_icons="sm4tik"
     statusbar_wireless="$(_get_1st_network_interface "wl*")"
     statusbar_ethernet="$(_get_1st_network_interface "eth*\|en*")"

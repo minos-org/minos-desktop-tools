@@ -180,7 +180,7 @@ _movietime() {
         _suspend_script > "${inhibit_script}" && chmod +x "${inhibit_script}"
         _daemonize /bin/sh "${inhibit_script}"
         #run user defined script
-        _movietime__hook_script="$(minos-config m-movietime-config 2>/dev/null)"
+        _movietime__hook_script="$(minos-config movietime-config 2>/dev/null)"
         [ -z "${_movietime__hook_script}" ] && _movietime__hook_script="${HOME}/.movietime"
         [ -x "${_movietime__hook_script}" ] && ${_movietime__hook_script} start
         _notify "${progname}" "started"
@@ -189,7 +189,7 @@ _movietime() {
         xset s on; xset +dpms
         _kill_script
         #kill user defined script
-        _movietime__hook_script="$(minos-config m-movietime-config 2>/dev/null)"
+        _movietime__hook_script="$(minos-config movietime-config 2>/dev/null)"
         [ -z "${_movietime__hook_script}" ] && _movietime__hook_script="${HOME}/.movietime"
         [ -x "${_movietime__hook_script}" ] && ${_movietime__hook_script} stop
         _notify "${progname}" "stopped"

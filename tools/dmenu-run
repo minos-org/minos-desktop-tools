@@ -162,7 +162,7 @@ _weather() {
 
 _get_terminal_vars() {
     if [ -z "${default_terminal}" ]; then
-        default_terminal="$(minos-config m-terminal 2>/dev/null)"
+        default_terminal="$(minos-config terminal 2>/dev/null)"
         if ! command -v "${default_terminal}" >/dev/null 2>&1; then
             if command -v "x-terminal-emulator" >/dev/null 2>&1; then
                 default_terminal="x-terminal-emulator"
@@ -198,7 +198,7 @@ _open() {
     else
         case "${1}" in
             http://*|https://*|ftp://*)
-                default_browser="$(minos-config m-browser 2>/dev/null)"
+                default_browser="$(minos-config browser 2>/dev/null)"
                 if ! command -v "${default_browser}" >/dev/null 2>&1; then
                     default_browser="x-www-browser"
                 fi
@@ -212,35 +212,35 @@ _open() {
                         fi
                         _exec "${EDITOR}" "${@}" ;;
                     inode/directory)
-                        default_fm="$(minos-config m-file-manager 2>/dev/null)"
+                        default_fm="$(minos-config file-manager 2>/dev/null)"
                         if ! command -v "${default_fm}" >/dev/null 2>&1; then
                             default_fm="x-www-browser"
                         fi
                         _exec "${default_fm}" "${@}"
                         ;;
                     application/pdf)
-                        default_pdf_viewer="$(minos-config m-pdf 2>/dev/null)"
+                        default_pdf_viewer="$(minos-config pdf 2>/dev/null)"
                         if ! command -v "${default_pdf_viewer}" >/dev/null 2>&1; then
                             default_pdf_viewer="x-www-browser"
                         fi
                         _exec "${default_pdf_viewer}" "${@}"
                         ;;
                     video/*)
-                        default_video_player="$(minos-config m-video-player 2>/dev/null)"
+                        default_video_player="$(minos-config video-player 2>/dev/null)"
                         if ! command -v "${default_video_player}" >/dev/null 2>&1; then
                             default_video_player="x-www-browser"
                         fi
                         _exec "${default_video_player}" "${@}"
                         ;;
                     audio/*)
-                        default_music_player="$(minos-config m-music-player 2>/dev/null)"
+                        default_music_player="$(minos-config music-player 2>/dev/null)"
                         if ! command -v "${default_music_player}" >/dev/null 2>&1; then
                             default_music_player="x-www-browser"
                         fi
                         _exec "${default_music_player}" "${@}"
                         ;;
                     image/*)
-                        default_image_viewer="$(minos-config m-image-viewer 2>/dev/null)"
+                        default_image_viewer="$(minos-config image-viewer 2>/dev/null)"
                         if ! command -v "${default_image_viewer}" >/dev/null 2>&1; then
                             default_image_viewer="display"
                         fi

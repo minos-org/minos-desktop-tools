@@ -21,6 +21,20 @@ _usage() {
     printf "%s\\n" "it'll exit with an error."
 }
 
+_basename() {
+    [ -z "${1}" ] && return 1 || _basename2__name="${1%%/}"
+    [ -z "${2}" ] || _basename2__suffix="${2}"
+    case "${_basename2__name}" in
+        /*|*/*) _basename2__name="${_basename2__name##*/}"
+    esac
+
+    if [ -n "${_basename2__suffix}" ] && [ "${#_basename2__name}" -gt "${#2}" ]; then
+        _basename2__name="${_basename2__name%$_basename2__suffix}"
+    fi
+
+    printf "%s" "${_basename2__name}"
+}
+
 _list() {
     printf "%s\\n" "list"
     exit
@@ -33,7 +47,8 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+progname="$(_basename "${0}")"
+progname="${progname#m-}"
 
 if ! command -v "minos-config" >/dev/null 2>&1; then
     printf "%s\\n" "${progname}: minos-config was not found!, exiting." >&2
@@ -67,7 +82,7 @@ if [ -z "${default_app}" ]; then
 else
     if printf "%s" "${default_app}" | grep ":t" >/dev/null; then
         default_app="${default_app%:t*}"
-        default_te="$(minos-config m-terminal)"
+        default_te="$(minos-config terminal)"
         [ -z "${default_te}" ] && default_te="x-terminal-emulator"
         [ -z "${SHELL}" ] && SHELL="bash"
         if command -v "setsid" >/dev/null 2>&1; then
