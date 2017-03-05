@@ -66,9 +66,7 @@ _gen_offauto_opts() {
 
     _goopts__OLDIFS="$IFS"; IFS=","
     for _goopts__state in ${OFFAUTO_OPTS}; do
-        case "${ACTIVE_MONITORS}" in
-            *"${_goopts__monitor}"*) _goopts__result="${_goopts__result}${_goopts__monitor}.${_goopts__state}", ;;
-        esac
+        _goopts__result="${_goopts__result}${_goopts__monitor}.${_goopts__state},"
     done
 
     printf "%s\\n" "${_goopts__result}"
