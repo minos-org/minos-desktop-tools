@@ -73,10 +73,7 @@ if [ -z "${minos_statusbar_base}" ]; then
     fi
 fi
 
-if [ -z "${minos_statusbar_base}" ]; then
-    printf "%s\\n" "minos-statusbar: couldn't find a valid config file, exiting." >&2
-    return 1
-else
+if [ -f "${minos_statusbar_base}" ]; then
     statusbar_icons="$(minos-config statusbar-icons 2>/dev/null)"
     [ -z "${statusbar_icons}" ] && statusbar_icons="sm4tik"
     statusbar_wireless="$(_get_1st_network_interface "wl*")"
@@ -84,9 +81,12 @@ else
 
     cp "${minos_statusbar_base}" "${minos_statusbar}"
 
-    sed -i "s:/sm4tik/:/${statusbar_icons}/:g"      "${minos_statusbar}"
-    sed -i "s:WL_INTERFACE:${statusbar_wireless}:g" "${minos_statusbar}"
-    sed -i "s:EN_INTERFACE:${statusbar_ethernet}:g" "${minos_statusbar}"
+    [ -n "${statusbar_icons}" ]    && \
+        sed -i "s:/sm4tik/:/${statusbar_icons}/:g" "${minos_statusbar}"
+    [ -n "${statusbar_wireless}" ] && \
+        sed -i "s:WL_INTERFACE:${statusbar_wireless}:g" "${minos_statusbar}"
+    [ -n "${statusbar_ethernet}" ] && \
+        sed -i "s:EN_INTERFACE:${statusbar_ethernet}:g" "${minos_statusbar}"
 
     #http://www.reddit.com/r/unixporn/comments/22jgrh/debiani3_minimalist_crisp_clear/
     echo "{\"version\":1}"
@@ -98,4 +98,7 @@ else
     #else
         #exec conky -c "${minos_statusbar}"
     #fi
+else
+    printf "%s\\n" "minos-statusbar: couldn't find a valid config file, exiting." >&2
+    return 1
 fi
