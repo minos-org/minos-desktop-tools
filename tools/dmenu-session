@@ -20,8 +20,8 @@ _usage() {
     printf "%s\\n" "  lock"
     printf "%s\\n" "  relogin"
     printf "%s\\n" "  logout"
-    printf "%s\\n" "  reboot"
-    printf "%s\\n" "  shutdown"
+    printf "%s\\n" "  reboot|restart"
+    printf "%s\\n" "  shutdown|halt"
     printf "%s\\n" "  suspend"
     printf "%s\\n" "  hibernate"
 }
@@ -272,17 +272,17 @@ fi
 [ X"${LOGNAME}" = X"root" ] && _sudo=""
 
 case "${choice}" in
- -h|--help) _usage && exit                 ;;
-      lock) _lock                          ;;
-   relogin) _relogin                       ;;
-    logout) _confirm logout   && _logout   ;;
-    reboot) _confirm reboot   && _reboot   ;;
-  shutdown) _confirm shutdown && _shutdown ;;
-   suspend) _lock &
-            player-ctrl pause >/dev/null 2>&1
-            _suspend   ;;
- hibernate) _lock &
-            player-ctrl pause >/dev/null 2>&1
-            _hibernate ;;
-         *) exit 1     ;;
+     -h|--help) _usage && exit                 ;;
+          lock) _lock                          ;;
+       relogin) _relogin                       ;;
+        logout) _confirm logout   && _logout   ;;
+reboot|restart) _confirm reboot   && _reboot   ;;
+ shutdown|halt) _confirm shutdown && _shutdown ;;
+       suspend) _lock &
+                player-ctrl pause >/dev/null 2>&1
+                _suspend  ;;
+     hibernate) _lock &
+                player-ctrl pause >/dev/null 2>&1
+               _hibernate ;;
+             *) exit 1    ;;
 esac
