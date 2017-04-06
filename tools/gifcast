@@ -19,7 +19,7 @@ _die() {
 _notify() {
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
-        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
             if command -v "gxmessage" 2>/dev/null; then
                 font="Monaco 9"
@@ -59,18 +59,33 @@ elif ! command -v "convert" >/dev/null 2>&1; then
     exit 1
 fi
 
-[ -z "${1}" ] && file="${HOME}/$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8).gif" || file="${1}"
+random_name="$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8)"
+tmp_avi="/tmp/${random_name}.${$}.avi"
+trap 'rm -f -- "${tmp_avi}"' INT TERM HUP EXIT
 
-case "${file}" in
+if [ -n "${1}" ]; then
+    output_file="${1}"
+else
+    output_file="${HOME}/${random_name}.gif"
+fi
+
+case "${output_file}" in
     *.gif) : ;;
-    *)  _die ;;
+        *) _die ;;
 esac
 
 _notify "[+] Gifcast" "in 3.., 2.., 1.., smile =)!"
 
-ffcast -s ffmpeg -r 15 -- -pix_fmt rgb24 "${file}" && _notify "[+] Optimising" "${file}" \
-    && convert -layers Optimize "${file}" "${file}".optimized \
-    && mv "${file}".optimized "${file}" && _notify "[+] Done" "${file}" && \
-    if command -v "xclip" >/dev/null 2>&1; then
-        printf "%s" "${file}" 2>/dev/null | xclip -selection clipboard
-    fi
+set -e
+
+ffcast -s ffmpeg -r 20 -- -vcodec huffyuv "${tmp_avi}"
+_notify "[+] Optimising" "${output_file}"
+convert -layers Optimize -set delay 10 "${tmp_avi}" "${output_file}"
+rm -rf "${tmp_avi}"
+_notify "[+] Done" "${output_file}"
+
+set +e
+
+if command -v "xclip" >/dev/null 2>&1; then
+    printf "%s" "${output_file}" 2>/dev/null | xclip -selection clipboard
+fi

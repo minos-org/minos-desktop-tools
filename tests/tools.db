@@ -137,12 +137,12 @@ test X"$(gifcast -h |head -1)"               = X"Usage: gifcast [options] file.g
 test X"$(gifcast --help | head -1)"          = X"Usage: gifcast [options] file.gif"
 test X"$(gifcast --cui  | head -1)"          = X""
 test X"$(gifcast --cui 2>&1|head -1)"        = X"gifcast: unrecognized option '--cui'"
-gifcast > cui &    sleep 6; xdotool mousemove 50 50 mousedown 1 mousemove 150 150 mouseup 1
-sleep 1; ffcast -k; sleep 3; file="$(awk '/Done:/ {print $3; exit}' cui)"; test -s "${file}"; rm "${file}"
+gifcast > cui &     sleep 4; xdotool mousemove 50 50 mousedown 1 mousemove 150 150 mouseup 1
+sleep 3; ffcast -k; sleep 3; file="$(awk '/Done:/ {print $3; exit}' cui)"; test -s "${file}"; rm "${file}"
 #TODO 25-09-2014 23:02 >> figure out why the following sometimes crashes i3|X11
-xdotool click --clearmodifiers 1
-gifcast file.gif & sleep 6; xdotool mousemove 50 50 mousedown 1 mousemove 150 150 mouseup 1
-sleep 1; ffcast -k; sleep 3; test -s file.gif
+#xdotool click --clearmodifiers 1
+gifcast file.gif &  sleep 4; xdotool mousemove 50 50 mousedown 1 mousemove 150 150 mouseup 1
+sleep 3; ffcast -k; sleep 3; test -s file.gif
 @end
 
 @begin{minos-autostart}
