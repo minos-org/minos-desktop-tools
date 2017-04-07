@@ -28,13 +28,13 @@ if ! pgrep firefox >/dev/null 2>&1; then backup-mozilla; test X"${?}" = X"1"; fi
 @begin{dmenu-alarm}
 dmenu-alarm & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "o@o/"  && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"1"
 dmenu-alarm & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "1s" && xdotool key "Return"
-sleep 2 && pgrep -fl "countdown.alarm" >/dev/null 2>&1
+sleep 2 && pgrep -fl -- "-alarm.alarm" >/dev/null 2>&1
 dmenu-alarm & sleep 0.3 && xdotool type "stop" && xdotool key "Return"
-sleep 0.5 && test X"$(pgrep -fl "countdown.alarm")" = X""
+sleep 0.5 && test X"$(pgrep -fl -- "-alarm.alarm")" = X""
 dmenu-alarm "1"
-sleep 2 && pgrep -fl "countdown.alarm" >/dev/null 2>&1
+sleep 2 && pgrep -fl -- "-alarm.alarm" >/dev/null 2>&1
 dmenu-alarm "stop"
-sleep 0.5 && test X"$(pgrep -fl "countdown.alarm")" = X""
+sleep 0.5 && test X"$(pgrep -fl -- "-alarm.alarm")" = X""
 @end
 
 @begin{dmenu-killall}
@@ -98,7 +98,7 @@ test X"$(dmenu-launcher "3 + int (2.3)")"         = X"5"
 test X"$(dmenu-launcher "3 + int  (2.3)")"        = X"5"
 test X"$(dmenu-launcher "(factorial(3))")"        = X"6"
 test X"$(dmenu-launcher "foo+bar")"               = X""
-test X"$(dmenu-launcher "1 / 0")"                 = X""
+test X"$(dmenu-launcher "1 / 0")"                 = X"" || test X"$(dmenu-launcher "1 / 0")" = X"inf"
 test X"$(dmenu-launcher --command_not_found_handle "40412cui")"     = X""
 dmenu-launcher --command_not_found_handle "40412cui"; test X"${?}" != X"0"
 @end

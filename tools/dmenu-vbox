@@ -69,5 +69,8 @@ if [ -z "${vboxmachine}" ]; then
     _die
 else
     error_msg="$(vboxmanage -q startvm "${vboxmachine}" --type gui 2>&1 1>/dev/null)"
-    [ "${?}" != X"0" ] && _notify "Error" "${error_msg}"
+    if [ X"${?}" != X"0" ]; then
+        _notify "Error" "${error_msg}"
+        exit 1
+    fi
 fi

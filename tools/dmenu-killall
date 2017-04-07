@@ -73,5 +73,8 @@ if [ -z "${process_name}" ]; then
     _die
 else
     error_msg="$(kill -9 $(pgrep -x "${process_name}") 2>&1 1>/dev/null)"
-    [ "${?}" != X"0" ] && _notify "Error" "${error_msg}"
+    if [ X"${?}" != X"0" ]; then
+        _notify "Error" "${error_msg}"
+        exit 1
+    fi
 fi

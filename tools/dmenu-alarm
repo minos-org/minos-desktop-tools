@@ -6588,6 +6588,12 @@ _notify() {
     fi
 }
 
+_str2lower() {
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | \
+        tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
+}
+
 _wakeup_at() {
     #sets the wakeup time to the absolute time time_t.
     #time_t is the time in seconds since 1970-01-01, 00:00 UTC
@@ -6620,7 +6626,7 @@ _next_alarm_in_time() {
     [ -z "${1}" ] && return 1
     #use the 4th field which is the id because of its uniqueness and significance
     #time_string:exec:timet_orig:timet_target:timeout
-    _neitime__alarm="$(printf "%s" "${1}"|cut -d":" -f4|sort|awk '{print; exit}')"
+    _neitime__alarm="$(printf "%s" "${1}"|cut -d"|" -f4|sort|awk '{print; exit}')"
     printf "%s" "${1}" | awk '/'"${_neitime__alarm}"'/{print; exit}'
 }
 
@@ -6648,16 +6654,16 @@ _stop() {
     _stop__alarm="$(printf "%s" "${_stop__db_alarms}"        | \
         awk 'NR=='"${_stop__alarm_nr}"'')"
     #use the 4th field which is the id because of its uniqueness and significance
-    #time_string:exec:timet_orig:timet_target:timeout
-    _stop__alarm_id="${_stop__alarm%:*}"
-    _stop__alarm_id="${_stop__alarm_id##*:}"
+    #time_string|exec|timet_orig|timet_target|timeout
+    _stop__alarm_id="${_stop__alarm%|*}"
+    _stop__alarm_id="${_stop__alarm_id##*|}"
 
     #1. stop current alarm
     if [ -f "${alarm_basename}.${_stop__alarm_id}" ]; then
         for pid in $(pgrep -f "/bin/sh ${alarm_basename}.${_stop__alarm_id}" 2>/dev/null); do
             #this proccesure is executed twice because every alarm
-            #launches two daemons, one for launching the alarm and
-            #other for auto raising the volume
+            #launches two daemons, one for the alarm and other for
+            #the auto raising volume
 
             if command -v "setsid" >/dev/null 2>&1; then
                 kill -15 -"${pid}"
@@ -6675,9 +6681,9 @@ _stop() {
                 [ "${_stop_child}" ] && continue || _stop_child="1"
 
                 #take the 2nd field which is the cmd to kill
-                #time_string:exec:timet_orig:timet_target:timeout
-                _stop__alarm_cmd="${_stop__alarm#*:}"
-                _stop__alarm_cmd="${_stop__alarm_cmd%%:*}"
+                #time_string|exec|timet_orig|timet_target|timeout
+                _stop__alarm_cmd="${_stop__alarm#*|}"
+                _stop__alarm_cmd="${_stop__alarm_cmd%%|*}"
                 _stop__alarm_cmd="${_stop__alarm_cmd%% *}" #remove cmd parameters
 
                 _stop__alarm_cmd_pid="$(pgrep -f "${_stop__alarm_cmd}" 2>/dev/null)"
@@ -6721,9 +6727,9 @@ _stop() {
     #get next alarm
     _stop__next_alarm_in_time="$(_next_alarm_in_time "${_stop__db_alarms}")"
     #use the 4th field which is the id because of its uniqueness and significance
-    #time_string:exec:timet_orig:timet_target:timeout
-    _stop__next_alarm_in_time_id="${_stop__next_alarm_in_time%:*}"
-    _stop__next_alarm_in_time_id="${_stop__next_alarm_in_time_id##*:}"
+    #time_string|exec|timet_orig|timet_target|timeout
+    _stop__next_alarm_in_time_id="${_stop__next_alarm_in_time%|*}"
+    _stop__next_alarm_in_time_id="${_stop__next_alarm_in_time_id##*|}"
 
     #3. update autowakeup to next alarm, this is useful in case the systems gets
     #suspended/shutdown, wake up 180 seconds (3 minutes) before
@@ -6739,39 +6745,41 @@ _stop() {
 _secs() {
     #translate sleep date format to seconds
     [ -z "${1}" ] && return 1
-    _siatime__string="${1}"
+    _secs__string="$(_str2lower "${1}")"
 
-    _siatime__partial_secs="0"; _siatime__total_secs="0"
+    _secs__partial_secs="0"; _secs__total_secs="0"
     #read char by char
-    while [ "${_siatime__string}" ]; do
-        _siatime__1stchar="${_siatime__string#?}"
-        _siatime__1stchar="${_siatime__string%$_siatime__1stchar}"
+    while [ "${_secs__string}" ]; do
+        _secs__1stchar="${_secs__string#?}"
+        _secs__1stchar="${_secs__string%$_secs__1stchar}"
 
-        case "${_siatime__1stchar}" in
-            m|M) _siatime__partial_secs="$(($_siatime__partial_secs * 60))"
-                _siatime__total_secs="$(($_siatime__total_secs + _siatime__partial_secs))"
-                _siatime__partial_secs="0"; i="1"
+        case "${_secs__1stchar}" in
+            m)  _secs__partial_secs="$(($_secs__partial_secs * 60))"
+                _secs__total_secs="$(($_secs__total_secs + _secs__partial_secs))"
+                _secs__partial_secs="0"; i="1"
                 ;;
-            h|H) _siatime__partial_secs="$(($_siatime__partial_secs * 3600))"
-                _siatime__total_secs="$(($_siatime__total_secs + _siatime__partial_secs))"
-                _siatime__partial_secs="0"; i="1"
+            h)  _secs__partial_secs="$(($_secs__partial_secs * 3600))"
+                _secs__total_secs="$(($_secs__total_secs + _secs__partial_secs))"
+                _secs__partial_secs="0"; i="1"
                 ;;
-            d|D) _siatime__partial_secs="$(($_siatime__partial_secs * 86400))"
-                _siatime__total_secs="$(($_siatime__total_secs + _siatime__partial_secs))"
-                _siatime__partial_secs="0"; i="1"
+            d)  _secs__partial_secs="$(($_secs__partial_secs * 86400))"
+                _secs__total_secs="$(($_secs__total_secs + _secs__partial_secs))"
+                _secs__partial_secs="0"; i="1"
                 ;;
             0|1|2|3|4|5|6|7|8|9)
-                _siatime__partial_secs="${_siatime__partial_secs}${_siatime__1stchar}"
-                _siatime__partial_secs="${_siatime__partial_secs##0}"
+                _secs__partial_secs="${_secs__partial_secs}${_secs__1stchar}"
+                _secs__partial_secs="${_secs__partial_secs##0}"
                 ;;
+            ' '|':'|'s') : ;;
+            *) return 1 ;;
         esac
-        [ X"${_siatime__string}" = X"${_siatime__1stchar}" ] && \
-            _siatime__string='' || _siatime__string="${_siatime__string#?}"
+        [ X"${_secs__string}" = X"${_secs__1stchar}" ] && \
+            _secs__string='' || _secs__string="${_secs__string#?}"
     done
 
-    _siatime__total_secs="$(($_siatime__total_secs + $_siatime__partial_secs))"
+    _secs__total_secs="$(($_secs__total_secs + $_secs__partial_secs))"
 
-    [ X"${_siatime__total_secs}" = X"0" ] && return 1 || printf "%s\\n" "${_siatime__total_secs}"
+    [ X"${_secs__total_secs}" = X"0" ] && return 1 || printf "%s\\n" "${_secs__total_secs}"
 }
 
 _secs2string() {
@@ -6999,17 +7007,17 @@ _daemon_script() {
     db_alarms="$(cat "${db}" 2>/dev/null)"
     [ -z "${db_alarms}" ] && exit
     next_alarm_in_time="$(_next_alarm_in_time "${db_alarms}")"
-    #time_string:cmd:timet_orig:timet_target:timeout
-    next_alarm_in_time_cmd="${next_alarm_in_time#*:}"
-    next_alarm_in_time_cmd="${next_alarm_in_time_cmd%%:*}"
+    #time_string|cmd|timet_orig|timet_target|timeout
+    next_alarm_in_time_cmd="${next_alarm_in_time#*|}"
+    next_alarm_in_time_cmd="${next_alarm_in_time_cmd%%|*}"
     next_alarm_in_time_cmd="$(printf "%s" "${next_alarm_in_time_cmd}" | \
         sed "s:\$HOME:${HOME}:g;s:~/:${HOME}/:;")"
-    next_alarm_in_time_origen="${next_alarm_in_time#*:}"
-    next_alarm_in_time_origen="${next_alarm_in_time_origen#*:}"
-    next_alarm_in_time_origen="${next_alarm_in_time_origen%%:*}"
-    next_alarm_in_time_target="${next_alarm_in_time%:*}"
-    next_alarm_in_time_target="${next_alarm_in_time_target##*:}"
-    next_alarm_in_time_timeout="${next_alarm_in_time##*:}"
+    next_alarm_in_time_origen="${next_alarm_in_time#*|}"
+    next_alarm_in_time_origen="${next_alarm_in_time_origen#*|}"
+    next_alarm_in_time_origen="${next_alarm_in_time_origen%%|*}"
+    next_alarm_in_time_target="${next_alarm_in_time%|*}"
+    next_alarm_in_time_target="${next_alarm_in_time_target##*|}"
+    next_alarm_in_time_timeout="${next_alarm_in_time##*|}"
     wakeup_secs="$(($next_alarm_in_time_target - 180))"
     secs="$(($next_alarm_in_time_target - $next_alarm_in_time_origen))"
     half="$((${secs}/2))"; quarter="$((${secs}/4))"; almost="$((${secs}/10))"
@@ -7018,8 +7026,8 @@ _daemon_script() {
     almost_since_1970="$(date  '+%s' -d "+ $(($secs - $almost)) seconds")"
     current_time_in_secs_since_1970="$(date '+%s')"
     i="0"; while [ "${next_alarm_in_time_target}" -gt "${current_time_in_secs_since_1970}" ]; do
-    #reschedule wakeup (60 seconds in the feature) if it gets too close to the
-    #alarm time so the system has enough time to hibernate if that's the case
+    #reschedule wakeup (60 seconds in the future) to give enough time to the
+    #system to hibernate without losing the alert if that's the case
     if [ "$(($wakeup_secs - $current_time_in_secs_since_1970))" -lt "60" ]; then
         wakeup_secs="$(($current_time_in_secs_since_1970 + 60))"
         _wakeup_at "${wakeup_secs}"
@@ -7066,9 +7074,9 @@ _dmenu_alarm() {
     #4. restart daemon for remaining alarms
 
     #1. append alarm to db
-    #time:exec:timet_current:timet_target:timeout
+    #time|exec|timet_current|timet_target|timeout
     _dalarm__alarm_id="$(date '+%s' -d "+ ${secs} seconds")"
-    printf "%s:%s:%s:%s:%s\\n" "${time}" "${cmd}" "$(date '+%s')" \
+    printf "%s|%s|%s|%s|%s\\n" "${time}" "${cmd}" "$(date '+%s')" \
         "${_dalarm__alarm_id}" "${timeout}" >> "${db}"
     _notify "Alarm added" "time left: $(_secs2string "${secs}")"
 
@@ -7101,8 +7109,8 @@ _dmenu_alarm() {
     _dalarm__next_alarm_in_time="$(_next_alarm_in_time "${_dalarm__db_alarms}")"
     #use the 4th field which is the id because of its uniqueness and significance
     #time_string:exec:timet_orig:timet_target:timeout
-    _dalarm__next_alarm_in_time_id="${_dalarm__next_alarm_in_time%:*}"
-    _dalarm__next_alarm_in_time_id="${_dalarm__next_alarm_in_time_id##*:}"
+    _dalarm__next_alarm_in_time_id="${_dalarm__next_alarm_in_time%|*}"
+    _dalarm__next_alarm_in_time_id="${_dalarm__next_alarm_in_time_id##*|}"
     _wakeup_at "$(($_dalarm__next_alarm_in_time_id - 180))"
 
     #4. restart daemon for remaining alarms
@@ -7159,17 +7167,17 @@ case "${time}" in
     s*) _stop "$(printf "%s\\n" "${time}" | \
         awk '{$1=""; sub(/^[ \t]+/, ""); print}')" && exit 0 ;;
     '') alarms="$(cat "${db}" 2>/dev/null | \
-        #orig_time:exec:timet_current:timet_target:timeout
-        awk -F: '{printf $1 ":" $2 ":" $4 "\n"}' | \
+        #orig_time|exec|timet_current|timet_target:timeout
+        awk -F'|' '{printf $1 "|" $2 "|" $4 "\n"}' | \
         while IFS= read -r alarm; do
-            orig_time_alarm="${alarm%%:*}"; alarm="${alarm#*:}"
-            exec_alarm="${alarm%%:*}"; alarm="${alarm#*:}"
+            orig_time_alarm="${alarm%%|*}"; alarm="${alarm#*|}"
+            exec_alarm="${alarm%%|*}"; alarm="${alarm#*|}"
             target_time_alarm="${alarm}"
             eta_alarm="$(($target_time_alarm - $(date '+%s')))"
             eta_human_format_alarm="$(_secs2string "${eta_alarm}")"
-            printf "%s:%s\\n" "${eta_alarm}:${orig_time_alarm}" \
-                              "${eta_human_format_alarm}:${exec_alarm}"
-        done | sort -n | awk -F: '{printf $2 " [eta " $3 "]\n" $4 "\n" }')"
+            printf "%s|%s\\n" "${eta_alarm}|${orig_time_alarm}" \
+                              "${eta_human_format_alarm}|${exec_alarm}"
+        done | sort -n | awk -F"|" '{printf $2 " [eta " $3 "]\n" $4 "\n" }')"
         [ -z "${alarms}" ] || _notify "Configured alarms" "${alarms}"; exit ;;
     *)  secs="$(_secs "${time}")"
         [ -z "${secs}" ] && _notify "Invalid time format '${time}'"      \

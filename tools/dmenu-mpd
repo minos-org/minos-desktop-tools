@@ -67,9 +67,10 @@ fi
 if [ -z "${song}" ]; then
     _die
 else
-    song="$(mpc playlist | awk '{if($0 == "'"${song}"'") {print NR}}')"
-    if [ -n "${song}" ]; then
-        error_msg="$(mpc play "${song}" 2>&1 1>/dev/null)"
-        [ "${?}" != X"0" ] && _notify "Error" "${error_msg}"
+    song="$(mpc playlist | awk '{if($0 == "'"${song}"'") {print NR}}')" || exit 1
+    error_msg="$(mpc play "${song}" 2>&1 1>/dev/null)"
+    if [ X"${?}" != X"0" ]; then
+        _notify "Error" "${error_msg}"
+        exit 1
     fi
 fi
