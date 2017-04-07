@@ -6,9 +6,13 @@
 #a gui menu appears asking for which phrase to say, default to english voice
 
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
-#looks better with a xft powered dmenu:
+
+#variables are impractical to save complex cmds because of shell expantion
+#therefore functions are required: http://mywiki.wooledge.org/BashFAQ/050
+DMENU() { dmenu -p 'txt2speech' -i -fn Bahamas-10 \
+                -nb \#000000 -nf \#ffffff -sb \#0083c3 -sf \#ffffff; }
+#looks better on xft powered dmenu:
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
-DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #aaffaf'
 
 _usage() {
     printf "%s\\n" "Usage: ${progname} [string] ..."
@@ -18,8 +22,8 @@ _usage() {
 }
 
 _die() {
-    [ -z "${1}" ] && _die_msg="dmenu" || _die_msg="${1}"
-    printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | ${DMENU}
+    [ -n "${1}" ] && _die_msg="${1}" || exit 1
+    printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | DMENU
     exit 1
 }
 
@@ -28,7 +32,7 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-for arg; do #parse options
+for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
     esac
@@ -39,7 +43,7 @@ if [ -z "${1}" ]; then
         printf "%s\\n" "install 'dmenu' to run this program" >&2
         exit 1
     fi
-    phrase="$(${DMENU} <&- && printf "\\n")"
+    phrase="$(DMENU <&- && printf "\\n")"
 else
     phrase="${@}"
 fi

@@ -18,8 +18,10 @@
 
 #variables are impractical to save complex cmds because of shell expantion
 #therefore functions are required: http://mywiki.wooledge.org/BashFAQ/050
-DMENU() { dmenu -p 'Input' -i -fn Bahamas-10 \
-                -nb \#000000 -nf \#ffffff -sb \#7541b9 -sf \#ffffff; }
+DMENU() { dmenu -p 'Run' -i -fn Bahamas-10 \
+                -nb \#000000 -nf \#ffffff -sb \#129792 -sf \#000000; }
+                #-nb \#000000 -nf \#ffffff -sb \#FE5625 -sf \#000000; }
+                #-nb \#000000 -nf \#ffffff -sb \#273639 -sf \#ffffff; }
 #looks better on xft powered dmenu:
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 

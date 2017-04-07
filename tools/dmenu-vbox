@@ -5,23 +5,69 @@
 #example: dmenu-vbox
 #appears a gui menu appears asking for which virtual machine to boot
 
-#looks better with a xft powered dmenu:
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
+#variables are impractical to save complex cmds because of shell expantion
+#therefore functions are required: http://mywiki.wooledge.org/BashFAQ/050
+DMENU() { dmenu -p 'VirtualBox' -i -fn Bahamas-10 \
+                -nb \#000000 -nf \#ffffff -sb \#0083c3 -sf \#ffffff; }
+#looks better on xft powered dmenu:
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
-DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #3B5998'
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [PATTERN]"
+    printf "%s\\n" "Dmenu for VirtualBox."
+    printf "%s\\n"
+    printf "%s\\n" "  -h, --help      show this message and exit"
+}
 
 _die() {
-    [ -z "${1}" ] && _die_msg="dmenu" || _die_msg="${1}"
-    printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | ${DMENU}
+    [ -n "${1}" ] && _die_msg="${1}" || exit 1
+    printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | DMENU
     exit 1
 }
 
-if ! command -v "dmenu" >/dev/null 2>&1; then
-    printf "%s\\n" "install 'dmenu' to run this program" >&2
-    exit 1
-elif ! command -v "vboxmanage" >/dev/null 2>&1; then
-    _die "install 'virtualbox' to run this program"
+_notify() {
+    [ -z "${1}" ] && return 1
+    kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+    if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}" "${2}"; then
+        if command -v "gxmessage" 2>/dev/null; then
+            font="Monaco 9"
+            DISPLAY=${DISPLAY:-:0} gxmessage "${font:+-fn "$font"}" "${1}" "ok"
+        elif command -v "xmessage" 2>/dev/null; then
+            font="fixed"
+            DISPLAY=${DISPLAY:-:0}  xmessage "${font:+-fn "$font"}" "${1}" "ok"
+        fi
+    fi
+}
+
+if [ ! -t 0 ]; then
+    #add input comming from pipe or file to $@
+    set -- "${@}" $(cat)
 fi
 
-vboxmachine="$(vboxmanage list vms | cut -d\" -f2 | ${DMENU})"
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+    esac
+done
 
-[ -z "${vboxmachine}" ] && exit 1 || vboxmanage -q startvm "${vboxmachine}" --type gui
+if [ -z "${1}" ]; then
+    if ! command -v "dmenu" >/dev/null 2>&1; then
+        printf "%s\\n" "install 'dmenu' to run this program" >&2
+        exit 1
+    elif ! command -v "vboxmanage" >/dev/null 2>&1; then
+        _die "install 'virtualbox' to run this program"
+    fi
+    vboxmachine="$(vboxmanage list vms | cut -d\" -f2 | DMENU)"
+else
+    vboxmachine="$(vboxmanage list vms | cut -d\" -f2 | \
+                   grep -i "${@}" 2>/dev/null | head -1 )"
+fi
+
+if [ -z "${vboxmachine}" ]; then
+    _die
+else
+    error_msg="$(vboxmanage -q startvm "${vboxmachine}" --type gui 2>&1 1>/dev/null)"
+    [ "${?}" != X"0" ] && _notify "Error" "${error_msg}"
+fi

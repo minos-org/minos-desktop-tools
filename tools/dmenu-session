@@ -6,9 +6,13 @@
 #appears a gui menu appears asking for which action to be taken
 
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
-#looks better with a xft powered dmenu:
+
+#variables are impractical to save complex cmds because of shell expantion
+#therefore functions are required: http://mywiki.wooledge.org/BashFAQ/050
+DMENU() { dmenu -p 'Session' -i -fn Bahamas-10 \
+                -nb \#000000 -nf \#ffffff -sb \#c0c0c0 -sf \#000000; }
+#looks better on xft powered dmenu:
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
-DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 
 _usage() {
     printf "%s\\n" "Usage: ${progname} [subcommand]"
@@ -27,8 +31,8 @@ _usage() {
 }
 
 _die() {
-    [ -z "${1}" ] && return 0
-    printf "%b%b\\n" "${*}" ", press <Enter> to exit" | ${DMENU}
+    [ -n "${1}" ] && _die_msg="${1}" || exit 1
+    printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | DMENU
     exit 1
 }
 
@@ -257,7 +261,7 @@ if [ -z "${1}" ]; then
         printf "%s\\n" "${progname}: install 'dmenu' to run this program" >&2
         exit 1
     fi
-    choice="$(printf "%b\\n" "lock\nrelogin\nlogout\nreboot\nshutdown\nsuspend\nhibernate" | ${DMENU})"
+    choice="$(printf "%b\\n" "lock\nrelogin\nlogout\nreboot\nshutdown\nsuspend\nhibernate" | DMENU)"
     interactive="1"
 else
     choice="${1}"

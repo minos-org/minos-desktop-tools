@@ -5,13 +5,29 @@
 #example: dmenu-xrandr
 #a gui menu appears asking for which resolution to apply
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
+#variables are impractical to save complex cmds because of shell expantion
+#therefore functions are required: http://mywiki.wooledge.org/BashFAQ/050
+DMENU() { dmenu -p 'Monitor' -i -fn Bahamas-10 \
+                -nb \#000000 -nf \#ffffff -sb \#c0c0c0 -sf \#000000; }
+#looks better on xft powered dmenu:
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+
 #looks better with a xft powered dmenu:
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
-DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
+#DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 
-_dmenu_die() {
-    [ -z "${1}" ] && _die_msg="dmenu" || _die_msg="${1}"
-    printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | ${DMENU}
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [PATTERN]"
+    printf "%s\\n" "Dmenu for xrandr."
+    printf "%s\\n"
+    printf "%s\\n" "  -h, --help      show this message and exit"
+}
+
+_die() {
+    [ -n "${1}" ] && _die_msg="${1}" || exit 1
+    printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | DMENU
     exit 1
 }
 
@@ -140,11 +156,22 @@ _reload_wallpaper() {
     fi
 }
 
+if [ ! -t 0 ]; then
+    #add input comming from pipe or file to $@
+    set -- "${@}" $(cat)
+fi
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+    esac
+done
+
 if ! command -v "dmenu" >/dev/null 2>&1; then
     printf "%s\\n" "install 'dmenu' to run this program" >&2
     exit 1
 elif ! command -v "xrandr" >/dev/null 2>&1; then
-    _dmenu_die "install 'xrandr' to run this program"
+    _die "install 'xrandr' to run this program"
 fi
 
 xrandr_output="$(xrandr)"
@@ -160,7 +187,7 @@ ROTATE_OPTS="normal,inverted,left,right"
 OFFAUTO_OPTS="off,auto"
 POSITION_OPTS="above,below,same-as,left-of,right-of"
 
-[ -z "${connected_monitors}" ] && _dmenu_die "unable to detect screen interfaces"
+[ -z "${connected_monitors}" ] && _die "unable to detect screen interfaces"
 
 #create resolution variables for each monitor
 OLDIFS="${IFS}"; IFS=","
@@ -198,7 +225,7 @@ fi
 IFS="${OLDIFS}"
 
 options="$(printf "%s\\n" "${options}" | tr ',' '\n')"
-selected_option="$(printf "%b\\n" "${options}"  | ${DMENU})"
+selected_option="$(printf "%b\\n" "${options}"  | DMENU)"
 
 printf "%s\\n" "[I] selected option: ${selected_option:-none}"
 

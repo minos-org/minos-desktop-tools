@@ -18,10 +18,12 @@ alarm_basename="${HOME}/.dmenu-alarm.alarm"
 
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
-#looks better with a xft powered dmenu:
-#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+#variables are impractical to save complex cmds because of shell expantion
+#therefore functions are required: http://mywiki.wooledge.org/BashFAQ/050
 DMENU() { dmenu -p "Alarm"  -i -fn Bahamas-10 \
           -nb \#000000 -nf \#ffffff -sb \#f0f0f0 -sf \#000000; }
+#looks better on xft powered dmenu:
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 
 # $ printf "%s\\n" \
 # "main(i){for(i=0;;i++)putchar(((i*(i>>8|i>>9)&46&i>>8))^(i&i>>13|i>>6));}" | \
@@ -7114,7 +7116,7 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-for arg; do #parse options
+for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
         '-e'|'--exec')
