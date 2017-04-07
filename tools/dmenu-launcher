@@ -1,8 +1,8 @@
 #!/bin/sh
 #description: dmenu based launcher
-#usage: dmenu-run is best suited to be launched from a shortcut
+#usage: dmenu-launcher is best suited to be launched from a shortcut
 
-#example: dmenu-run
+#example: dmenu-launcher
 #a gui menu appears asking which program to launch
 
 #looks better with a xft powered dmenu:
@@ -11,11 +11,17 @@
 #TODO 04-11-2015 14:06 >> add plugin support ":plugin"
 #could replace hardcoded weather, money exchange and search functions
 #possible implementation:
-#cat ~/.dmenu-run.conf
+#cat ~/.dmenu-launcher.conf
 #   google='xdg-open http://www.google.com/search?q='
 #   magic_word='cmd'
 #   ...
-DMENU="dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #7541b9"
+
+#variables are impractical to save complex cmds because of shell expantion
+#therefore functions are required: http://mywiki.wooledge.org/BashFAQ/050
+DMENU() { dmenu -p 'Input' -i -fn Bahamas-10 \
+                -nb \#000000 -nf \#ffffff -sb \#7541b9 -sf \#ffffff; }
+#looks better on xft powered dmenu:
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 
 cli_cmds="man info vi vim ussh ssh htop top mutt tmux"
 terminal_emulators="urxvt rxvt gnome-terminal konsole xterm"
@@ -40,12 +46,11 @@ _usage() {
     printf "%s\\n" "  3*5                        => execute and display arithmetic operation"
     printf "%s\\n" "  15 usd to mxn              => execute and display money currency"
     printf "%s\\n" "  :weather                   => show current weather"
-    printf "%s\\n"
 }
 
 _die() {
-    [ -z "${1}" ] && _die_msg="dmenu" || _die_msg="${1}"
-    printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | ${DMENU}
+    [ -n "${1}" ] && _die_msg="${1}" || exit 1
+    printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | DMENU
     exit 1
 }
 
@@ -258,7 +263,7 @@ _encode_search() {
     printf "%s" "${@}" | sed 's:[\t ]\+:%20:g'
 }
 
-_dmenu_run() {
+_dmenu_launcher() {
     [ -z "${1}" ] && return 1
     _cmd="${@}"; _1st_word="${_cmd%% *}"; _1st_word="${_1st_word%:*}"
     _cmd_words_len=0; for word in ${_cmd}; do _cmd_words_len="$((_cmd_words_len+1))"; done
@@ -279,11 +284,11 @@ _dmenu_run() {
             fi ;;
         *:g|*:go|*:goo|*:goog|*:googl|*:google)
                 search="$(_encode_search "${_cmd%:*}")"
-                _dmenu_run "http://www.google.com/search?q=${search}:open"
+                _dmenu_launcher "http://www.google.com/search?q=${search}:open"
             ;;
         *:b|*:bi|*:bin|*:bing)
                 search="$(_encode_search "${_cmd%:*}")"
-                _dmenu_run "http://bing.com/search?q=${search}:open"
+                _dmenu_launcher "http://bing.com/search?q=${search}:open"
             ;;
         *:o|*:op|*:ope|*:open) _cmd="${_cmd%:*}" && _open "${_cmd}" ;;
         "o "*)     _cmd="${_cmd#o }"    && _open "${_cmd}:open" ;;
@@ -304,7 +309,7 @@ _dmenu_run() {
         #for internal redirection
         *:execute) _cmd="${_cmd%:*}" && _exec "${_cmd}" ;;
         #money currency converter
-        *" "[tT][oO]" "*) [ X"${_cmd_words_len}" = X"4" ] || _dmenu_run "${_cmd}:execute"
+        *" "[tT][oO]" "*) [ X"${_cmd_words_len}" = X"4" ] || _dmenu_launcher "${_cmd}:execute"
             if [ -x "$(command -v "cconverter" 2>/dev/null)" ]; then
                 [ -z "${_not_found_handle}" ] && exec cconverter -q "${_cmd}" || \
                     exec cconverter "${_cmd}"
@@ -322,7 +327,7 @@ _dmenu_run() {
         #or a math function()
         [0-9+-\(]*|\(*|[a-z]*\(*|[a-z]*" (")
                 if [ -x "$(command -v "${_1st_word}" 2>/dev/null)" ]; then
-                    _dmenu_run "${_cmd}:execute"
+                    _dmenu_launcher "${_cmd}:execute"
                 else
                     if awk 'BEGIN {exit}' >/dev/null 2>&1; then
                         for _cmd__word in ${_cmd}; do
@@ -374,17 +379,17 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-for arg; do #parse options
+for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
-        #dmenu-run can be used in the command_not_found_handle function
+        #dmenu-launcher can be used in the command_not_found_handle function
         #at /etc/bash.bashrc to provide math, conversions, weather
         #and other operations on invalid commands
 
         #/etc/bash.bashrc
         #function command_not_found_handle {
-            #if [ -x "$(command -v dmenu-run 2>/dev/null)" ]; then
-                #dmenu-run --command_not_found_handle $@ && return 0
+            #if [ -x "$(command -v dmenu-launcher 2>/dev/null)" ]; then
+                #dmenu-launcher --command_not_found_handle $@ && return 0
             #fi
         --command_not_found_handle) _not_found_handle="1";  shift ;;
     esac
@@ -397,10 +402,10 @@ if [ -z "${1}" ]; then
     elif ! command -v "dmenu-path" >/dev/null 2>&1; then
         _die "install 'dmenu-path' to run this program"
     fi
-    cmd="$(dmenu-path | ${DMENU})" || exit "${?}"
+    cmd="$(dmenu-path | DMENU)" || exit "${?}"
 else
     cmd="${@}"
 fi
 
 cmd="$(printf "%s" "${cmd}" | sed "s:\$HOME:${HOME}:g;s:~/:${HOME}/:;s:\"::g;s:\'::g;s:\\\::g;s:[\t ]\+: :g;")"
-_dmenu_run "${cmd}"
+_dmenu_launcher "${cmd}"
