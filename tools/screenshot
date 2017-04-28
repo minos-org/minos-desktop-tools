@@ -9,8 +9,9 @@ _usage() {
     printf "%s\\n" "Usage: ${progname} [options] [output-file]"
     printf "%s\\n" "Take a screenshot in 3.., 2.., 1."
     printf "\\n"
-    printf "%s\\n" "  -s           select a rectangle to save"
-    printf "%s\\n" "  -h, --help   show this help message and exit"
+    printf "%s\\n" "  -t, --timeout   take screen in the defined time"
+    printf "%s\\n" "  -s, --select    select a rectangle to save"
+    printf "%s\\n" "  -h, --help      show this help message and exit"
 }
 
 _die() {
@@ -61,34 +62,49 @@ _screenshot() {
     eval "${_screenshot__bin} ${_screenshot__opt} ${1}"
 }
 
+_set_defaults() {
+    if [ -z "${file}" ]; then
+        file="${HOME}/$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8)".png
+    else
+        case "${file}" in
+            *.png|*.jpg|*.jpeg) file="${file}" ;;
+            *) file="${file}".png ;;
+        esac
+    fi
+
+    [ -z "${timeout}" ] && timeout="3"
+}
+
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- "${@}" $(cat)
 fi
 
-if [ "${#}" -eq "0" ]; then
-    file="${HOME}"/$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8).png
-else
-    for arg in "${@}"; do #parse options
-        case "${arg}" in
-            --) shift; break  ;;
-            -h|--help) _usage && exit ;;
-            -s) flag_select="y"; shift; ;;
-            -*) _die "${progname}: unrecognized option '${arg}'" ;;
-        esac
-    done
-    if [ -z "${1}" ]; then
-        file="${HOME}"/$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8).png
-    else
-        case "${1}" in
-            *.png|*.jpg|*.jpeg) file="${1}" ;;
-            *) file="${1}".png ;;
-        esac
-    fi
-fi
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        --) shift; break  ;;
+        -h|--help) _usage && exit ;;
+        -s|--select) flag_select="y"; shift; ;;
+        '-t'|'--timeout')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter" ;;
+                esac
+                shift; timeout="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -t*) timeout="${1#-t}"; shift ;;
+        --timeout*) timeout="${1#--timeout}"; shift ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+        *)  file="${arg}" ;;
+    esac
+done
+
+_set_defaults
 
 _notify "Screenshot" "in 3.., 2.., 1.., smile =)!"
-sleep 3 && kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+sleep "${timeout}" && kill -9 $(pgrep notify-osd) >/dev/null 2>&1
 sleep .5
 [ -n "${flag_select}" ] && _notify "Select" "a rectangle to save"
 _screenshot "${file}"
