@@ -4,8 +4,8 @@
 
 #example: backup-mozilla
 #tar: Removing leading `/' from member names
-#/home/chilicuil/.mozilla/
-#/home/chilicuil/.mozilla/firefox/
+#/home/user/.mozilla/
+#/home/user/.mozilla/firefox/
 #...
 
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
