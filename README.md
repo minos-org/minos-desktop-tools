@@ -1,6 +1,6 @@
 ## About
 
-[![Build Status](https://travis-ci.org/minos-org/minos-tools.png?branch=master)](https://travis-ci.org/minos-org/minos-tools)
+[![Build Status](https://travis-ci.org/minos-org/minos-desktop-tools.png?branch=master)](https://travis-ci.org/minos-org/minos-desktop-tools)
 
 Integration minos tools: http://minos.io
 
@@ -17,11 +17,11 @@ Integration minos tools: http://minos.io
 2. Install:
 
    ```
-   $ sudo apt-get update && sudo apt-get install minos-tools
+   $ sudo apt-get update && sudo apt-get install minos-desktop-tools
    ```
 
 3. Enjoy ☺!
 
 ## Feedback
 
-Please drop me an [email](mailto:j@minos.io) with your suggestions or open [an issue](https://github.com/minos-org/minos-tools/issues) with your comments.
+Please drop me an [email](mailto:j@minos.io) with your suggestions or open [an issue](https://github.com/minos-org/minos-desktop-tools/issues) with your comments.

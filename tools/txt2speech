@@ -312,9 +312,9 @@ _update() {
     return 1; }
 
     _u__error_msg="$(wget -q -O- --no-check-certificate \
-    https://raw.githubusercontent.com/minos-org/minos-tools/master/tools/txt2speech \
+    https://raw.githubusercontent.com/minos-org/minos-desktop-tools/master/tools/txt2speech \
         > "/tmp/${progname}.${$}" 2>/dev/null || curl -s  \
-    https://raw.githubusercontent.com/minos-org/minos-tools/master/tools/txt2speech \
+    https://raw.githubusercontent.com/minos-org/minos-desktop-tools/master/tools/txt2speech \
     > "/tmp/${progname}.${$}" 2>/dev/null)" || { printf "%s\\n%s\\n" \
         "ERROR: Failed to fetch update, please try later or update manually" \
         "${_u__error_msg}" >&2; return 1; }
