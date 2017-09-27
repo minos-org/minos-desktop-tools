@@ -197,7 +197,7 @@ _relogin() {
 _reboot() {
     _legacy_reboot() {
         PATH="${PATH}:/sbin/"
-        ${_sudo} reboot
+        ${_sudo} shutdown -r now
     }
 
     if command -v "dbus-send" >/dev/null 2>&1; then
