@@ -5,8 +5,6 @@
 #example: player-ctrl next
 #play next song in queue
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
-
 _usage() {
     printf "%s\\n" "Usage: ${progname} play|pause|status|print [PARAM]|toggle|next|previous"
     printf "%s\\n" "Control player apps."
@@ -83,10 +81,11 @@ _spotify() {
 
     _spotify_print_current_song() {
         sleep 0.2 || sleep 1
-        _dbus_send --print-reply \
-                  --dest=org.mpris.MediaPlayer2.spotify \
+        _dbus__output="$(_dbus_send --print-reply \
+                   --dest=org.mpris.MediaPlayer2.spotify \
         /org/mpris/MediaPlayer2 org.freedesktop.DBus.Properties.Get \
-        string:org.mpris.MediaPlayer2.Player string:Metadata | \
+        string:org.mpris.MediaPlayer2.Player string:Metadata)" || return $?
+        printf "%s\\n" "${_dbus__output}" | \
             awk -v status="${1}" 'BEGIN {RS=" entry\\("; FS="\""};
             /artist/ {artist = $4}; /title/ {title = $4} END {
             if (length(status) == 0) {if(length(artist) == 0)
@@ -129,21 +128,83 @@ _spotify() {
     esac
 }
 
+_spotify_remote() {
+    #also called connect: https://www.spotify.com/mx/connect/
+    [ -z "${1}" ] && return 1
+
+    #read spotify tokens
+    [ -f ~/.spotify ] && . ~/.spotify || return 1
+    app_client_id="${app_client_id:-43e8830355074eb8b73bba56d95b8b81}"
+    app_private_id="${app_private_id:-06e8c6c3d0284e0ca5dfc7e5dd1da15e}"
+    user_refresh_token="${refresh_token}"
+
+    [ -z "${user_refresh_token}" ] && return 1
+
+    if [ -z "${_spotify_remote__token}" ]; then
+        _spotify_remote__token="$(curl -s https://accounts.spotify.com/api/token \
+            -H "Authorization: Basic $(printf "${app_client_id}:${app_private_id}" | base64 | tr -d '\n')" \
+            -d grant_type=refresh_token -d refresh_token="${user_refresh_token}" | \
+            awk -F \" '/access_token/ {gsub(",",""); print $4; exit}'
+        )"
+    fi
+
+    if [ -z "${_spotify_remote__device}" ]; then
+        _spotify_remote__device="$(
+            curl -s "https://api.spotify.com/v1/me/player/devices" \
+                -H "Accept: application/json" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${_spotify_remote__token}" | \
+            awk '/id/ {gsub("\"","");gsub(",",""); print $NF; exit}'
+        )"
+    fi
+
+    [ -z "${_spotify_remote__device}" ] && return 1
+
+    _spotify__endpoint() {
+        [ -z "${1}" ] && return 1
+
+        curl -s -X "${1}"                       \
+            -H "Accept: application/json"       \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${_spotify_remote__token}" \
+            "https://api.spotify.com/v1/me/player${2}"
+    }
+
+    case "${1}" in
+        #https://developer.spotify.com/console/player/
+        play|pause) _spotify__endpoint "PUT" "/${1}?device_id=${_spotify_remote__device}" ;;
+        status)     _spotify__endpoint "GET"  ;;
+        toggle)
+            if _spotify_remote status | grep "is_playing" | grep "true"; then
+               _spotify_remote pause
+            else
+               _spotify_remote play
+            fi
+            ;;
+        next|previous) _spotify__endpoint "POST" "/${1}?device_id=${_spotify_remote__device}" ;;
+        print)
+            case "${2}" in
+                ''|title) mpc status|awk 'NR == 1 {gsub(/"/,""); gsub(/\\/,"/"); print}' ;;
+            esac
+            ;;
+    esac
+}
+
 _player_ctrl() {
     #preference
-    #1.- spotify
+    #1.- local|remote spotify
     #2.- mplayer|mpd
     #3.- mpd
     [ -z "${1}" ] && return 1
 
-    if [ -n "$(pgrep spotify)" ]; then
+    if [ -n "$(pgrep spotify)" ] || _spotify_remote status >/dev/null 2>&1; then
         [ X"${1}" = X"print" ] && _spotify "${@}" && return "${?}"
         if [ "$(mpc status | grep playing)" ]; then
             _mpd pause
         elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
             _mplayer pause
         else
-            _spotify "${@}"
+            _spotify "${@}" || _spotify_remote "${@}"
         fi
     elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
         [ X"${1}" = X"print" ] && _mplayer "${@}" && return "${?}"
@@ -156,6 +217,8 @@ _player_ctrl() {
         _mpd "${@}"
     fi
 }
+
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
