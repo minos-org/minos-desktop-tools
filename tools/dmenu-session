@@ -195,24 +195,32 @@ _relogin() {
 }
 
 _reboot() {
+    _legacy_reboot() {
+        PATH="${PATH}:/sbin/"
+        ${_sudo} shutdown -r now
+    }
+
     if command -v "dbus-send" >/dev/null 2>&1; then
         dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" \
             /org/freedesktop/ConsoleKit/Manager \
-            org.freedesktop.ConsoleKit.Manager.Restart
+            org.freedesktop.ConsoleKit.Manager.Restart || _legacy_reboot
     else
-        PATH="${PATH}:/sbin/"
-        ${_sudo} shutdown -r now
+        _legacy_reboot
     fi
 }
 
 _shutdown() {
+    _legacy_shutdown() {
+        PATH="${PATH}:/sbin/"
+        ${_sudo} shutdown -h now
+    }
+
     if command -v "dbus-send" >/dev/null 2>&1; then
         dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" \
             /org/freedesktop/ConsoleKit/Manager \
-            org.freedesktop.ConsoleKit.Manager.Stop
+            org.freedesktop.ConsoleKit.Manager.Stop || _legacy_shutdown
     else
-        PATH="${PATH}:/sbin/"
-        ${_sudo} shutdown -h now
+        _legacy_shutdown
     fi
 }
 
