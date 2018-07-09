@@ -164,6 +164,8 @@ _spotify_remote() {
         [ -z "${1}" ] && return 1
 
         curl -s -X "${1}"                       \
+            #causes CURL to send a Content-Length: 0
+            -d ""                               \
             -H "Accept: application/json"       \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${_spotify_remote__token}" \
