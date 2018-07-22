@@ -136,20 +136,27 @@ batt_at="$(HOME=/home/"${user}" minos-config battery-alerts 2>/dev/null)"
 [ -z "$(_valid_batt_values "${batt_at}")" ] && batt_at="$(HOME=/home/"${user}" minos-config battery-alerts 2>/dev/null)"
 [ -z "$(_valid_batt_values "${batt_at}")" ] && batt_at="15,10,7,5"
 batt_at="$(_sort_batt_values "${batt_at}")"
-if command -v "dmenu-session" >/dev/null 2>&1; then
-    action="$(command -v "dmenu-session") hibernate"
-    _sudo=""
-else
-    action="$(HOME=/home/"${user}" minos-config hibernate 2>/dev/null)"
-    [ -z "${action}" ] && action="$(command -v pm-hibernate)"
-    if command -v "gksudo" >/dev/null 2>&1; then
-        _sudo="gksudo"
+
+action="$(HOME=/home/"${user}" minos-config battery-action 2>/dev/null)"
+if [ -z "${action}" ]; then
+    if command -v "dmenu-session" >/dev/null 2>&1; then
+        action="$(command -v "dmenu-session") hibernate"
     else
-        _sudo="sudo"
+        action="$(HOME=/home/"${user}" minos-config hibernate 3>/dev/null)"
+        [ -z "${action}" ] && action="$(command -v pm-hibernate)"
     fi
 fi
-#=============
 
+case "${action}" in
+    dmenu-session*) _sudo="" ;;
+    *)  if command -v "gksudo" >/dev/null 2>&1; then
+            _sudo="gksudo"
+        else
+            _sudo="sudo"
+        fi
+        ;;
+esac
+#=============
 
 if [ X"${stat}" = X"Discharging" ]; then
     batt_values_buf="${batt_at}"; i="0"
