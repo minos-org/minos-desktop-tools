@@ -212,7 +212,7 @@ _reboot() {
 _shutdown() {
     _legacy_shutdown() {
         PATH="${PATH}:/sbin/"
-        ${_sudo} 'shutdown -h now'
+        ${_sudo} shutdown -h now
     }
 
     if command -v "dbus-send" >/dev/null 2>&1; then
