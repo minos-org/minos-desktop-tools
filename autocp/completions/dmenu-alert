@@ -1,6 +1,6 @@
-_dmenu_alert()
-{
-    if ! command -v "dmenu-alert" >/dev/null 2>&1; then
+_dmenu_alert() {
+    local cmd="dmenu-alert"
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
         return
     fi
 
@@ -10,9 +10,9 @@ _dmenu_alert()
 
     #general options
     case "${cur}" in
-        --*) long_opts="$(dmenu-alert -h 2>&1  | awk 'match($0,/--[0-9A-Za-z]* /) {print substr($0,RSTART,RLENGTH)}')"
+        --*) long_opts="$("${cmd}" -h 2>&1  | awk 'match($0,/--[0-9A-Za-z]* /) {print substr($0,RSTART,RLENGTH)}')"
              COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
-        -*)  short_opts="$(dmenu-alert -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
+        -*)  short_opts="$("${cmd}" -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
              COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
         *)   commands="stop"
              COMPREPLY=($(compgen -W "${commands}" -- ${cur}));   return ;;

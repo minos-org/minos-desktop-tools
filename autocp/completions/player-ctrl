@@ -1,6 +1,6 @@
-_player_ctrl()
-{
-    if ! command -v "player-ctrl" >/dev/null 2>&1; then
+_player_ctrl() {
+    local cmd="player-ctrl"
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
         return
     fi
 
@@ -10,7 +10,7 @@ _player_ctrl()
 
     #cur="${COMP_WORDS[COMP_CWORD]}"
     #prev="${COMP_WORDS[COMP_CWORD-1]}"
-    opts="$(player-ctrl -h 2>&1 | awk '/Usage/ {gsub(/\|/," "); $1=""; $2=""; sub(/^[ \t]+/, ""); print}')"
+    opts="$("${cmd}" -h 2>&1 | awk '/Usage/ {gsub(/\|/," "); $1=""; $2=""; sub(/^[ \t]+/, ""); print}')"
 
     #general options
     case "${cur}" in
