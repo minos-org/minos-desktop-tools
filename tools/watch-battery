@@ -107,9 +107,9 @@ for arg in "${@}"; do #parse options
 done
 
 [ X"${LOGNAME}" = X"root" ] && user="$(grep 1000 /etc/group | cut -d: -f1)" || user="${LOGNAME}"
-bin="$(HOME=/home/"${user}" minos-config battery 2>/dev/null)"
+bin="$(HOME=/home/"${user}" minos-config battery 2>/dev/null | awk '{print $1}')"
 case "${bin}" in
-      no|NO|No|nO) return        ;;
+      no|NO|No|nO|false|disabled) exit ;;
     watch-battery) :             ;;
                 *) exec "${bin}" ;;
 esac
