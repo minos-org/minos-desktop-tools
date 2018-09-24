@@ -7,13 +7,13 @@
 #eg, (every 3 min)
 #*/3 * * * * /path/to/this/script
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(basename "${0}")"
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname}"
-    printf "%s\\n" "This program should be run as a cron job, eg.: */3 * * * * ${progname}"
+    printf "%s\\n" "Usage: ${PROGNAME}"
+    printf "%s\\n" "This program should be run as a cron job, eg.: */3 * * * * ${PROGNAME}"
 }
 
 _die() {
@@ -75,16 +75,16 @@ _valid_batt_values() {
     if [ -z "${1}" ]; then
         return 1
     else
-        _vbv__result="$(printf "%s" "${1}" | awk '{ gsub(/^[ \t]+|[ \t]+$/, ""); print }')"
+        _vbv__result="$(printf "%s\\n" "${1}" | awk '{ gsub(/^[ \t]+|[ \t]+$/, ""); print $1}')"
         while [ "${_vbv__result}" ]; do
             _vbv__option="${_vbv__result%%,*}"
-            if ! printf "%s" "${_vbv__option}" | grep -v "[^0-9]" >/dev/null; then
+            if ! printf "%s\\n" "${_vbv__option}" | grep -v "[^0-9]" >/dev/null; then
                 return 1
             fi
             [ X"${_vbv__result}" = X"${_vbv__option}" ] && _vbv__result='' \
                 || _vbv__result="${_vbv__result#*,}"
         done
-        printf "%s" "${1}"
+        printf "%s\\n" "${1}"
     fi
 }
 
@@ -92,9 +92,9 @@ _sort_batt_values() {
     if [ -z "${1}" ]; then
         return 1
     else
-        _sbv__result="$(printf "%s" "${1}" | awk '{ gsub(/^[ \t]+|[ \t]+$/, ""); print }')"
-        _sbv__result="$(printf "%s" "${_sbv__result}" | tr "," "\n" | sort -n |tr "\n" ",")"
-        printf "%s" "${_sbv__result%,}"
+        _sbv__result="$(printf "%s\\n" "${1}" | awk '{ gsub(/^[ \t]+|[ \t]+$/, ""); print $1}')"
+        _sbv__result="$(printf "%s\\n" "${_sbv__result}" | tr "," "\n" | sort -n |tr "\n" ",")"
+        printf "%s\\n" "${_sbv__result%,}"
     fi
 }
 
@@ -102,7 +102,7 @@ for arg in "${@}"; do #parse options
     case "${arg}" in
         --) shift; break ;;
         -h|--help) _usage && exit ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 
@@ -114,10 +114,10 @@ case "${bin}" in
                 *) exec "${bin}" ;;
 esac
 
-exec 9>/tmp/"${progname}".lock
-[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${progname}".lock
+exec 9>/tmp/"${PROGNAME}".lock
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${PROGNAME}".lock
 if ! flock -n 9 ; then
-    _notify "${progname}: another instance is running";
+    _notify "${PROGNAME}: another instance is running";
     exit 1
 fi
 
@@ -131,7 +131,7 @@ fi
 stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
 #battery percentage
 batt_current="$(acpi -b |awk '{if ($0 ~ "%,") sub("%,", ""); else sub("%", ""); print $4}')"
-batt_last_seen="$(cat /tmp/"${progname}" 2>/dev/null)"
+batt_last_seen="$(cat /tmp/"${PROGNAME}" 2>/dev/null)"
 batt_at="$(HOME=/home/"${user}" minos-config battery-alerts 2>/dev/null)"
 [ -z "$(_valid_batt_values "${batt_at}")" ] && batt_at="$(HOME=/home/"${user}" minos-config battery-alerts 2>/dev/null)"
 [ -z "$(_valid_batt_values "${batt_at}")" ] && batt_at="15,10,7,5"
@@ -194,8 +194,8 @@ if [ X"${stat}" = X"Discharging" ]; then
                     batt_last_seen="${batt_value}"
                     ;;
             esac
-            printf "%s\\n" "${batt_last_seen}" > /tmp/"${progname}"
-            [ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${progname}" || :
+            printf "%s\\n" "${batt_last_seen}" > /tmp/"${PROGNAME}"
+            [ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${PROGNAME}" || :
             break
         fi
         [ X"${batt_values_buf}" = X"${batt_value}" ] && batt_values_buf='' || batt_values_buf="${batt_values_buf#*,}"
