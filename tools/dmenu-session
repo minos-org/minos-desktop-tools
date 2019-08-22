@@ -212,7 +212,7 @@ _reboot() {
 _shutdown() {
     _legacy_shutdown() {
         PATH="${PATH}:/sbin/"
-        ${_sudo} shutdown -h now
+        ${_sudo} 'shutdown -h now'
     }
 
     if command -v "dbus-send" >/dev/null 2>&1; then
@@ -231,7 +231,7 @@ _suspend() {
     if ! command -v "${suspend}" >/dev/null 2>&1; then
         _die "install '${suspend}' to run this option"
     fi
-    ${_sudo} ${suspend}
+    ${_sudo} "${suspend}"
 }
 
 _hibernate() {
@@ -241,7 +241,7 @@ _hibernate() {
     if ! command -v "${hibernate}" >/dev/null 2>&1; then
         _die "install '${hibernate}' to run this option"
     fi
-    ${_sudo} ${hibernate}
+    ${_sudo} "${hibernate}"
 }
 
 _confirm() {
