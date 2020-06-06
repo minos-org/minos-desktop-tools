@@ -10,7 +10,8 @@ _usage() {
     printf "%s\\n" "Usage: ${progname} [options]"
     printf "%s\\n" "WARNING, Only use this program as an argument to status_command in i3 (~/.i3/config)"
     printf "\\n"
-    printf "%s\\n" "  -h, --help   show this help message and exit"
+    printf "%s\\n" "  -d, --debug   show debug information"
+    printf "%s\\n" "  -h, --help    show this help message and exit"
 }
 
 _die() {
@@ -48,6 +49,7 @@ exec 0>/dev/null #i3bar click events (58e68) make impossible to read stdin witho
 for arg; do #parse options
     case "${arg}" in
         --) shift; break  ;;
+        -d|--debug) DEBUG="1" && exit ;;
         -h|--help) _usage && exit ;;
         -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
@@ -92,7 +94,11 @@ if [ -f "${minos_statusbar_base}" ]; then
     echo "{\"version\":1}"
     echo '['
     echo '[] ,'
-    conky -c "${minos_statusbar}"
+    if [ -z "${DEBUG}" ]; then
+        conky -c "${minos_statusbar}" 2>/dev/null
+    else
+        conky -c "${minos_statusbar}"
+    fi
     #if command -v "setsid" >/dev/null 2>&1; then
         #(setsid conky -c "${minos_statusbar}" &)
     #else
