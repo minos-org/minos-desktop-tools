@@ -76,58 +76,6 @@ _mpd() {
     esac
 }
 
-_spotify() {
-    [ -z "${1}" ] && return 1
-
-    _spotify_print_current_song() {
-        sleep 0.2 || sleep 1
-        _dbus__output="$(_dbus_send --print-reply \
-                   --dest=org.mpris.MediaPlayer2.spotify \
-        /org/mpris/MediaPlayer2 org.freedesktop.DBus.Properties.Get \
-        string:org.mpris.MediaPlayer2.Player string:Metadata)" || return $?
-        printf "%s\\n" "${_dbus__output}" | \
-            awk -v status="${1}" 'BEGIN {RS=" entry\\("; FS="\""};
-            /artist/ {artist = $4}; /title/ {title = $4} END {
-            if (length(status) == 0) {if(length(artist) == 0)
-                {print title} else {print artist" - "title}}
-            else {print artist" - "title, status}}'
-    }
-
-    case "${1}" in
-        play)     _dbus_send --print-reply \
-                             --dest=org.mpris.MediaPlayer2.spotify \
-                  /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Play \
-                             >/dev/null && _spotify_print_current_song
-                  ;;
-        pause)    _dbus_send --print-reply \
-                             --dest=org.mpris.MediaPlayer2.spotify \
-                  /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Pause \
-                             >/dev/null && _spotify_print_current_song "[PAUSED]"
-                  ;;
-        status)    _spotify_print_current_song ;;
-        toggle)   _dbus_send --print-reply \
-                             --dest=org.mpris.MediaPlayer2.spotify \
-                  /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.PlayPause \
-                             >/dev/null && _spotify_print_current_song
-                  ;;
-        next)     _dbus_send --print-reply \
-                             --dest=org.mpris.MediaPlayer2.spotify \
-                  /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Next \
-                             >/dev/null && _spotify_print_current_song
-                  ;;
-        previous) _dbus_send --print-reply \
-                             --dest=org.mpris.MediaPlayer2.spotify \
-                  /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Previous \
-                             >/dev/null && _spotify_print_current_song
-                  ;;
-        print)
-            case "${2}" in
-                ''|title) _spotify_print_current_song ;;
-            esac
-            ;;
-    esac
-}
-
 _spotify_remote() {
     #also called connect: https://www.spotify.com/mx/connect/
     [ -z "${1}" ] && return 1
@@ -191,11 +139,95 @@ _spotify_remote() {
     esac
 }
 
+_dbus_player() {
+    [ -z "${1}" ] && return 1
+    _dbus__dest="${2}"
+    _dbus__mpris="${3}"
+    _dbus__mpris_ctrl="${4}"
+
+    _dbus_print_current_song() {
+        sleep 0.2 || sleep 1
+        _dbus__output="$(_dbus_send --print-reply             \
+                                    --dest="${_dbus__dest}"   \
+        "${_dbus__mpris}" org.freedesktop.DBus.Properties.Get \
+        string:"${_dbus__mpris_ctrl}" string:Metadata)" || return "${?}"
+        printf "%s\\n" "${_dbus__output}" | \
+            awk -v status="${1}" 'BEGIN {RS=" entry\\("; FS="\""};
+            /artist/ {artist = $4}; /title/ {title = $4} END {
+            if (length(status) == 0) {if(length(artist) == 0)
+                {print title} else {print artist" - "title}}
+            else {print artist" - "title, status}}'
+    }
+
+    case "${1}" in
+        play)     _dbus_send --print-reply \
+                             --dest="${_dbus__dest}" \
+                             "${_dbus__mpris}" "${_dbus__mpris_ctrl}.Play" \
+                             >/dev/null && _dbus_print_current_song
+                  ;;
+        pause)    _dbus_send --print-reply \
+                             --dest="${_dbus__dest}" \
+                             "${_dbus__mpris}" "${_dbus__mpris_ctrl}.Pause" \
+                             >/dev/null && _dbus_print_current_song "[PAUSED]"
+                  ;;
+        status)    _dbus_print_current_song ;;
+        toggle)   _dbus_send --print-reply \
+                             --dest="${_dbus__dest}" \
+                             "${_dbus__mpris}" "${_dbus__mpris_ctrl}.PlayPause" \
+                             >/dev/null && _dbus_print_current_song
+                  ;;
+        next)     _dbus_send --print-reply \
+                             --dest="${_dbus__dest}" \
+                             "${_dbus__mpris}" "${_dbus__mpris_ctrl}.Next" \
+                             >/dev/null && _dbus_print_current_song
+                  ;;
+        previous) _dbus_send --print-reply \
+                             --dest="${_dbus__dest}" \
+                             "${_dbus__mpris}" "${_dbus__mpris_ctrl}.Previous" \
+                             >/dev/null && _dbus_print_current_song
+                  ;;
+        print)
+            case "${2}" in
+                ''|title) _dbus_print_current_song ;;
+            esac
+            ;;
+    esac
+}
+
+_spotify() {
+    [ -z "${1}" ] && return 1
+    _dbus__dest="org.mpris.MediaPlayer2.spotify"
+    _dbus__mpris="/org/mpris/MediaPlayer2"
+    _dbus__mpris_ctrl="$(printf "%s\\n" "${_dbus__mpris}"|sed -e 's:/::' -e 's:/:.:g').Player"
+
+    _dbus_player "${1}" "${_dbus__dest}" "${_dbus__mpris}" "${_dbus__mpris_ctrl}"
+}
+
+_music_is_playing_in_chrome() {
+    dbus-send --session --dest=org.freedesktop.DBus --type=method_call \
+              --print-reply /org/freedesktop/DBus org.freedesktop.DBus.ListNames | \
+        grep MediaPlayer2.chrome >/dev/null
+}
+
+_chrome() {
+    [ -z "${1}" ] && return 1
+    _dbus__dest="$(dbus-send --session --dest=org.freedesktop.DBus \
+                             --type=method_call                    \
+                             --print-reply /org/freedesktop/DBus   \
+                             org.freedesktop.DBus.ListNames |      \
+                       awk -F\" '/chrome/{print $2}')"
+    _dbus__mpris="/org/mpris/MediaPlayer2"
+    _dbus__mpris_ctrl="$(printf "%s\\n" "${_dbus__mpris}"|sed -e 's:/::' -e 's:/:.:g').Player"
+
+    _dbus_player "${1}" "${_dbus__dest}" "${_dbus__mpris}" "${_dbus__mpris_ctrl}"
+}
+
 _player_ctrl() {
     #preference
-    #1.- local|remote spotify
-    #2.- mplayer|mpd
-    #3.- mpd
+    #1.- local/remote spotify
+    #2.- chrome
+    #3.- mplayer|mpd
+    #4.- mpd
     [ -z "${1}" ] && return 1
 
     if [ -n "$(pgrep spotify)" ] || _spotify_remote status >/dev/null 2>&1; then
@@ -206,6 +238,15 @@ _player_ctrl() {
             _mplayer pause
         else
             _spotify "${@}" || _spotify_remote "${@}"
+        fi
+    elif _music_is_playing_in_chrome; then
+        [ X"${1}" = X"print" ] && _chrome "${@}" && return "${?}"
+        if [ "$(mpc status | grep playing)" ]; then
+            _mpd pause
+        elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
+            _mplayer pause
+        else
+            _chrome "${@}"
         fi
     elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
         [ X"${1}" = X"print" ] && _mplayer "${@}" && return "${?}"
