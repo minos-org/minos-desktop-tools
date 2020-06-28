@@ -6,9 +6,9 @@ before_install:
   - sudo apt-get install -y wget curl xclip xdotool gnupg dmenu gnupg-agent scrot ffcast imagemagick x11-xserver-utils sxiv feh libnotify-bin alsa-utils
   - wget --no-check-certificate https://raw.githubusercontent.com/minos-org/minos-static/master/static-get
   - chmod +x static-get && sudo mv static-get /usr/bin/
-  - static-get -x ffmpeg-3.1.3
-  - chmod +x ffmpeg-3.1.3-64bit-static-johnvansickle.com/ffmpeg-3.1.3-64bit-static/ffmpeg
-  - sudo mv ffmpeg-3.1.3-64bit-static-johnvansickle.com/ffmpeg-3.1.3-64bit-static/ffmpeg /usr/bin/
+  - static-get -x ffmpeg-3.0.2
+  - chmod +x ffmpeg-3.0.2-64bit-static-johnvansickle.com/ffmpeg-3.0.2-64bit-static/ffmpeg
+  - sudo mv ffmpeg-3.0.2-64bit-static-johnvansickle.com/ffmpeg-3.0.2-64bit-static/ffmpeg /usr/bin/
   #- sudo apt-add-repository ppa:mc3man/trusty-media -y
   #- sudo apt-get update -q
   #- sudo apt-get install -y ffmpeg
