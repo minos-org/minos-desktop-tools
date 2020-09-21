@@ -186,11 +186,7 @@ _dbus_player() {
                              "${_dbus__mpris}" "${_dbus__mpris_ctrl}.Previous" \
                              >/dev/null && _dbus_print_current_song
                   ;;
-        print)
-            case "${2}" in
-                ''|title) _dbus_print_current_song ;;
-            esac
-            ;;
+        print)    _dbus_print_current_song ;;
     esac
 }
 
