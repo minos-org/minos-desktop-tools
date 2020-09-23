@@ -65,12 +65,12 @@ _mpd() {
         play)     mpc play   ;;
         pause)    mpc pause  ;;
         status)   mpc status ;;
-        toggle)   [ "$(mpc status | grep playing)" ] && mpc pause || mpc play ;;
+        toggle)   [ "$(mpc status 2>&1 | grep playing)" ] && mpc pause || mpc play ;;
         next)     mpc next   ;;
         previous) mpc prev   ;;
         print)
             case "${2}" in
-                ''|title) mpc status|awk 'NR == 1 {gsub(/"/,""); gsub(/\\/,"/"); print}' ;;
+                ''|title) mpc status |awk 'NR == 1 {gsub(/"/,""); gsub(/\\/,"/"); print}' ;;
             esac
             ;;
     esac
@@ -202,7 +202,7 @@ _spotify() {
 _music_is_playing_in_chrome() {
     dbus-send --session --dest=org.freedesktop.DBus --type=method_call \
               --print-reply /org/freedesktop/DBus org.freedesktop.DBus.ListNames | \
-        grep MediaPlayer2.chrome >/dev/null
+        grep MediaPlayer2.chrome >/dev/null && return 1 || return 0
 }
 
 _chrome() {
@@ -228,7 +228,7 @@ _player_ctrl() {
 
     if [ -n "$(pgrep spotify)" ] || _spotify_remote status >/dev/null 2>&1; then
         [ X"${1}" = X"print" ] && _spotify "${@}" && return "${?}"
-        if [ "$(mpc status | grep playing)" ]; then
+        if [ "$(mpc status 2>&1 | grep playing)" ]; then
             _mpd pause
         elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
             _mplayer pause
@@ -237,7 +237,7 @@ _player_ctrl() {
         fi
     elif _music_is_playing_in_chrome; then
         [ X"${1}" = X"print" ] && _chrome "${@}" && return "${?}"
-        if [ "$(mpc status | grep playing)" ]; then
+        if [ "$(mpc status 2>&1 | grep playing)" ]; then
             _mpd pause
         elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
             _mplayer pause
@@ -246,7 +246,7 @@ _player_ctrl() {
         fi
     elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
         [ X"${1}" = X"print" ] && _mplayer "${@}" && return "${?}"
-        if [ "$(mpc status | grep playing)" ]; then
+        if [ "$(mpc status 2>&1 | grep playing)" ]; then
             _mpd pause
         else
             _mplayer "${@}"
