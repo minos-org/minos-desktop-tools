@@ -215,7 +215,9 @@ _chrome() {
     _dbus__mpris="/org/mpris/MediaPlayer2"
     _dbus__mpris_ctrl="$(printf "%s\\n" "${_dbus__mpris}"|sed -e 's:/::' -e 's:/:.:g').Player"
 
-    _dbus_player "${1}" "${_dbus__dest}" "${_dbus__mpris}" "${_dbus__mpris_ctrl}"
+    if [ -n "${_dbus__dest}" ]; then
+        _dbus_player "${1}" "${_dbus__dest}" "${_dbus__mpris}" "${_dbus__mpris_ctrl}"
+    fi
 }
 
 _player_ctrl() {
