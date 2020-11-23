@@ -21,6 +21,10 @@ _str2lower() {
     tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
 }
 
+_filter_non_valid_chars() {
+    sed 's/\\/\//g'
+}
+
 _dbus_send() {
     if [ "$(id -u)" = 0 ]; then #root
         if [ -z "${_dbus__address}" ]; then
@@ -156,7 +160,8 @@ _dbus_player() {
             /artist/ {artist = $4}; /title/ {title = $4} END {
             if (length(status) == 0) {if(length(artist) == 0)
                 {print title} else {print artist" - "title}}
-            else {print artist" - "title, status}}'
+            else {print artist" - "title, status}}' | \
+        _filter_non_valid_chars
     }
 
     case "${1}" in
