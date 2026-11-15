@@ -26,28 +26,16 @@ _filter_non_valid_chars() {
 }
 
 _dbus_send() {
-    if [ "$(id -u)" = 0 ]; then #root
-        if [ -z "${_dbus__address}" ]; then
-            _dbus__pid="$(pgrep dbus-launch|head -1)"
-            _dbus__user="$(grep -z USER /proc/"${_dbus__pid}"/environ | sed 's/USER=//')"
-            _dbus__address="$(awk \
-                '/^DBUS_SESSION_BUS_ADDRESS/{sub(/DBUS_SESSION_BUS_ADDRESS=/,"");print $0;exit}' \
-                /home/"${_dbus__user}"/.dbus/session-bus/$(dbus-uuidgen --get)-*)"
-        fi
-        #I've no idea what I'm doing
-        su "${_dbus__user}" -c "dbus-send $*"
-        #su "${_dbus__user}" -c "sh -c 'DBUS_SESSION_BUS_ADDRESS=\"${_dbus__address}\" dbus-send $*'"
-    else
-        dbus-send ${@}
-    fi
+    #on this user's session bus, as this user
+    dbus-send "${@}"
 }
 
 _mplayer() {
     [ -z "${1}" ] && return 1
-    _mplayer__fifo="$(cat etc/mplayer/mplayer.conf ~/.mplayer/config 2>/dev/null | \
-        awk '/^input=file=/ {sub(/^input=file=/, ""); print}' | tail -1)"
-
-    [ -n "${_mplayer__fifo}" ] && [ ! -e "${_mplayer__fifo}" ] && mkfifo "${_mplayer__fifo}"
+    #the fifo this user's mplayer reads, named in ~/.mplayer/config: the autostart makes it at
+    #login, in the user's runtime directory, and names it there; nothing here makes one
+    _mplayer__fifo="$(awk '/^input=file=/ {sub(/^input=file=/, ""); print}' \
+        ~/.mplayer/config 2>/dev/null | tail -1)"
 
     [ ! -p "${_mplayer__fifo}" ] && return 1
     case "${1}" in
@@ -237,7 +225,7 @@ _player_ctrl() {
         [ X"${1}" = X"print" ] && _spotify "${@}" && return "${?}"
         if [ "$(mpc status 2>&1 | grep playing)" ]; then
             _mpd pause
-        elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
+        elif [ -n "$(pgrep -u "$(id -u)" mplayer)" ] || [ -n "$(pgrep -u "$(id -u)" mpv)" ]; then
             _mplayer pause
         else
             _spotify "${@}" || _spotify_remote "${@}"
@@ -246,12 +234,12 @@ _player_ctrl() {
         [ X"${1}" = X"print" ] && _chrome "${@}" && return "${?}"
         if [ "$(mpc status 2>&1 | grep playing)" ]; then
             _mpd pause
-        elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
+        elif [ -n "$(pgrep -u "$(id -u)" mplayer)" ] || [ -n "$(pgrep -u "$(id -u)" mpv)" ]; then
             _mplayer pause
         else
             _chrome "${@}"
         fi
-    elif [ -n "$(pgrep mplayer)" ] || [ -n "$(pgrep mpv)" ]; then
+    elif [ -n "$(pgrep -u "$(id -u)" mplayer)" ] || [ -n "$(pgrep -u "$(id -u)" mpv)" ]; then
         [ X"${1}" = X"print" ] && _mplayer "${@}" && return "${?}"
         if [ "$(mpc status 2>&1 | grep playing)" ]; then
             _mpd pause

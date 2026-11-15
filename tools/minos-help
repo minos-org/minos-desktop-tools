@@ -39,18 +39,17 @@ done
 running="$(ps aux | awk '/got it/ {if ($0 !~ "awk") print $2}')"
 [ -n "${running}" ] && exit 1
 
-XMESSAGE="$(_whereis gxmessage)" && geometry="-geometry 400x520" || XMESSAGE="xmessage"
-font="Monaco 9"
-
-[ X"${XMESSAGE}" = X"xmessage" ] && font="fixed"
-
+#the help file, or the words saying there is none, given as the message itself
 if [ -f "${HOME}"/.minos/help ]; then
-    help="${HOME}"/.minos/help
+    set -- -file "${HOME}"/.minos/help
 elif [ -f "/etc/minos/help" ]; then
-    help="/etc/minos/help"
+    set -- -file /etc/minos/help
 else
-    printf "%s\\n" 'No help available' > /tmp/minos-help
-    help="/tmp/minos-help"
+    set -- 'No help available'
 fi
 
-${XMESSAGE} ${geometry} ${font:+-fn "$font"} -file "${help}" -buttons "got it"
+if _whereis gxmessage >/dev/null; then
+    gxmessage -geometry 400x520 -fn "Monaco 9" -buttons "got it" "${@}"
+else #a core font paints Latin-1: UTF-8 takes Xaw's international mode and a fontset, a 13px font per charset
+    LC_ALL=C.UTF-8 xmessage -xrm '*international: true' -xrm '*fontSet: -misc-fixed-medium-r-normal--13-*-*-*-*-*-*-*' -bg black -fg '#c7c1cc' -buttons "got it" "${@}"
+fi

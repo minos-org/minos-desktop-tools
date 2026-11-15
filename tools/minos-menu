@@ -1,0 +1,127 @@
+#!/bin/sh
+#description: minos menu, a few entries at the pointer, each with its key
+#usage: minos-menu "entry | key | command"...
+
+#example: minos-menu "Terminal | Win+Enter | m-terminal" "Help | F1 | m-help"
+#Terminal   Win+Enter
+#Help       F1
+
+progname="${0##*/}"
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [options] \"entry | key | command\"..."
+    printf "%s\\n" "Minos menu, at the pointer."
+    printf "\\n"
+    printf "%s\\n" "Each argument is an entry: its name, its key, shown beside it, and the"
+    printf "%s\\n" "command it runs. minos' i3 configuration lists them (/etc/i3/config)."
+    printf "\\n"
+    printf "%s\\n" "  -h, --help   show this help message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_lay_out() { #entries => how many and the characters of the widest row, then a row each: the entry and, in a
+    #column of its own three characters after the longest entry, its key, dimmer. One awk for it all, on
+    #bytes whatever the locale: a character is every byte that does not continue another (UTF-8)
+    LC_ALL=C awk '
+        function trim(s) { gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
+        function chars(s) { return length(s) - gsub(/[\200-\277]/, "&", s) }
+        function markup(s) { gsub(/&/, "\\&amp;", s); gsub(/</, "\\&lt;", s); gsub(/>/, "\\&gt;", s); return s }
+        BEGIN {
+            for (i = 1; i < ARGC; i++) {
+                first = index(ARGV[i], "|"); rest = substr(ARGV[i], first + 1); second = index(rest, "|")
+                entry[i] = trim(substr(ARGV[i], 1, first - 1)); key[i] = trim(substr(rest, 1, second - 1))
+                if (!first || !second || entry[i] == "" || trim(substr(rest, second + 1)) == "") {
+                    printf "not an entry (entry | key | command): %s\n", ARGV[i] | "cat 1>&2"; exit 1
+                }
+                if (chars(entry[i]) > entries) entries = chars(entry[i])
+                if (chars(key[i]) > keys) keys = chars(key[i])
+            }
+            print ARGC - 1, entries + 3 + keys
+            for (i = 1; i < ARGC; i++) {
+                gap = sprintf("%" (entries - chars(entry[i]) + 3) "s", "")
+                printf "%s%s<span alpha=\"60%%\">%s</span>\n", markup(entry[i]), gap, markup(key[i])
+            }
+        }' "${@}"
+}
+
+_corner() { #rows, characters of the widest => which corner of the menu goes at the pointer and its offset
+    #from it, in pixels: "north west 1 1", the menu below and right of the pointer, unless it would leave
+    #the screen there. rofi puts the corner where it is told and looks no further, and how large it will
+    #draw is not known before it does: a row is taken for 24 px and a character for 10, more than
+    #minos' font takes
+    _corner__v="north"; _corner__h="west"; _corner__x="1"; _corner__y="1"
+    #the pointer and the screen, from one program: x:N y:N screen:N window:N, then WIDTH HEIGHT
+    # shellcheck disable=SC2046 # six words
+    set -- "${1}" "${2}" $(xdotool getmouselocation getdisplaygeometry 2>/dev/null)
+    if [ "${#}" = "8" ]; then
+        [ "$((${3#x:} + (${2} + 4) * 10))" -le "${7}" ] || { _corner__h="east";  _corner__x="-1"; }
+        [ "$((${4#y:} + ${1} * 24 + 8))" -le "${8}" ]   || { _corner__v="south"; _corner__y="-1"; }
+    fi
+    printf "%s %s %s %s" "${_corner__v}" "${_corner__h}" "${_corner__x}" "${_corner__y}"
+}
+
+_rofi() { #rows, characters of the widest, the corner at the pointer (two words), its offset (x, y) => the
+    #row chosen, counted from 0. minos' colours and font, as dmenu and the bar wear them: white on black,
+    #the chosen row black on grey. No entry box, a row an entry; a corner at the pointer (-m -3). The
+    #pointer over a row marks it and one click chooses it; Esc or a click elsewhere leaves.
+    #The theme goes over rofi's own, which differs with its version: each part says all of its look.
+    #A rule a line: rofi does not read a list of selectors that goes on in the next
+    rofi -dmenu -no-config -m -3 -i -no-custom -markup-rows -format i -l "${1}" \
+        -font "Inconsolata 10" -hover-select -me-select-entry '' -me-accept-entry MousePrimary \
+        -theme-str "
+            * { background-color: #000000; text-color: #ffffff; border-color: #999999; }
+            window { location: north west; anchor: ${3} ${4}; x-offset: ${5}px; y-offset: ${6}px; }
+            window { width: $(($2 + 4))ch; background-color: #000000; border: 1px; padding: 2px; }
+            mainbox { background-color: #000000; border: 0; padding: 0; spacing: 0; children: [ listview ]; }
+            listview { lines: ${1}; columns: 1; fixed-height: true; dynamic: false; cycle: true; }
+            listview { background-color: #000000; border: 0; padding: 0; spacing: 0; scrollbar: false; }
+            element { border: 0; padding: 2px 1ch; spacing: 0; children: [ element-text ]; }
+            element normal.normal, element alternate.normal { background-color: #000000; text-color: #ffffff; }
+            element selected.normal { background-color: #c0c0c0; text-color: #000000; }
+            element-text { background-color: inherit; text-color: inherit; }"
+}
+
+#there is input coming from a pipe or a file: its words go to the end of $@. Asked of those two alone:
+#under i3 the input is /dev/null, and nothing is started to read it
+if [ -p /dev/stdin ] || [ -f /dev/stdin ]; then
+    # shellcheck disable=SC2046 # each word of the input is an option of its own
+    set -- "${@}" $(cat)
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break  ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+    esac
+done
+[ "${#}" -gt 0 ] || _die "${progname}: no entries"
+
+rows="$(_lay_out "${@}")" || exit 1
+#its first line: how many rows, and how wide
+IFS=' ' read -r count width << E=O=F
+${rows}
+E=O=F
+rows="${rows#*
+}"
+
+# shellcheck disable=SC2046 # the corner and its offset, four words
+chosen="$(printf "%s\\n" "${rows}" | _rofi "${count}" "${width}" $(_corner "${count}" "${width}"))" || exit 0
+[ -n "${chosen}" ] || exit 0
+
+#the command of the entry chosen: what follows its second |, without the spaces before it
+shift "${chosen}"
+entry_command="${1#*|}"; entry_command="${entry_command#*|}"
+entry_command="${entry_command#"${entry_command%%[! 	]*}"}"
+
+if command -v "setsid" >/dev/null 2>&1; then
+    (setsid sh -c "${entry_command}" &)
+else
+    exec sh -c "${entry_command}"
+fi
+
+# vim: set ts=8 sw=4 tw=0 ft=sh :

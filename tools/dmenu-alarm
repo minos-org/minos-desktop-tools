@@ -6578,12 +6578,10 @@ _notify() {
     [ -z "${1}" ] && return 1
     kill -9 $(pgrep notify-osd) >/dev/null 2>&1
     if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}" "${2}"; then
-        if command -v "gxmessage" 2>/dev/null; then
-            font="Monaco 9"
-            DISPLAY=${DISPLAY:-:0} gxmessage "${font:+-fn "$font"}" "${1}" "ok"
-        elif command -v "xmessage" 2>/dev/null; then
-            font="fixed"
-            DISPLAY=${DISPLAY:-:0}  xmessage "${font:+-fn "$font"}" "${1}" "ok"
+        if command -v gxmessage >/dev/null 2>&1; then
+            DISPLAY=${DISPLAY:-:0} gxmessage -fn "Monaco 9" -buttons OK "${1}${2:+: ${2}}"
+        elif command -v xmessage >/dev/null 2>&1; then
+            DISPLAY=${DISPLAY:-:0} LC_ALL=C.UTF-8 xmessage -xrm '*international: true' -xrm '*fontSet: -misc-fixed-medium-r-normal--13-*-*-*-*-*-*-*' -bg black -fg '#c7c1cc' -buttons OK "${1}${2:+: ${2}}"
         fi
     fi
 }
@@ -7082,8 +7080,12 @@ _dmenu_alarm() {
 
     #2. create auxiliar files
     if [ ! -f "${tune}" ]; then
-        (cd /tmp && printf "%s" "${tune_b64}" | _decode64 | zcat | tar xf -) && \
-        mv /tmp/dmenu-alarm.tune "${tune}" && chmod +x "${tune}"
+        #unpacked in a directory of mktemp's: a fixed name in the shared temporary directory
+        #is one any user can create first
+        _dalarm__tmp="$(mktemp -d)" && \
+        (cd "${_dalarm__tmp}" && printf "%s" "${tune_b64}" | _decode64 | zcat | tar xf -) && \
+        mv "${_dalarm__tmp}"/dmenu-alarm.tune "${tune}" && chmod +x "${tune}"
+        [ -z "${_dalarm__tmp}" ] || rm -rf "${_dalarm__tmp}"
     fi
 
     if [ ! -f "${daemon}" ]; then

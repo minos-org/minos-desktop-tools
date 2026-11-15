@@ -87,7 +87,20 @@ _return_valid_color() {
 }
 
 _get_i3lock_params() {
-    if [ -n "$(i3lock --bshlcolor 2>&1 | grep requires 2>&1)" ]; then
+    #the installed locker is asked for the name it gives to a color option; it answers
+    #"requires an argument" to the one it knows and takes nothing:
+    #   --bshl-color  i3lock-color, the locker of minos
+    #   --bshlcolor   i3lock-color as it was in 2012, the locker of minos before
+    #   neither one   the i3lock of ubuntu, its colors are compiled in: it gets none
+    if [ -n "$(i3lock --bshl-color 2>&1 | grep requires 2>&1)" ]; then
+        _get_i3lock_params__names="dashed"
+    elif [ -n "$(i3lock --bshlcolor 2>&1 | grep requires 2>&1)" ]; then
+        _get_i3lock_params__names="joined"
+    else
+        _get_i3lock_params__names=""
+    fi
+
+    if [ -n "${_get_i3lock_params__names}" ]; then
         _get_i3lock_params__inside="$(minos-config -n -c ~/.minos/session-manager lock-color-inside 2>/dev/null)"
         [ -z "${_get_i3lock_params__inside}" ] && _get_i3lock_params__inside="$(minos-config -n -c /etc/minos/session-manager lock-color-inside 2>/dev/null)"
         [ -z "${_get_i3lock_params__inside}" ] && _get_i3lock_params__inside="$(minos-config lock-color-inside 2>/dev/null)"
@@ -134,13 +147,15 @@ _get_i3lock_params() {
         [ -z "${_get_i3lock_params__keypress}" ] && _get_i3lock_params__keypress="$(minos-config -n -c /etc/minos/session-manager lock-color-keypress 2>/dev/null)"
         [ -z "${_get_i3lock_params__keypress}" ] && _get_i3lock_params__keypress="$(minos-config lock-color-keypress 2>/dev/null)"
         [ -z "${_get_i3lock_params__keypress}" ] || _get_i3lock_params__keypress="$(_return_valid_color "${_get_i3lock_params__keypress}")"
-        [ -z "${_get_i3lock_params__keypress}" ] && _get_i3lock_params__keypress="1e90ffff"
+        #the shade the lock of 2012 really painted: it dropped the low digit of every channel,
+        #so 1e90ff was seen as 1090f0 (and a52a2a as a02020) on every minos screen
+        [ -z "${_get_i3lock_params__keypress}" ] && _get_i3lock_params__keypress="1090f0ff"
 
         _get_i3lock_params__delpress="$(minos-config -n -c ~/.minos/session-manager lock-color-delpress 2>/dev/null)"
         [ -z "${_get_i3lock_params__delpress}" ] && _get_i3lock_params__delpress="$(minos-config -n -c /etc/minos/session-manager lock-color-delpress 2>/dev/null)"
         [ -z "${_get_i3lock_params__delpress}" ] && _get_i3lock_params__delpress="$(minos-config lock-color-delpress 2>/dev/null)"
         [ -z "${_get_i3lock_params__delpress}" ] || _get_i3lock_params__delpress="$(_return_valid_color "${_get_i3lock_params__delpress}")"
-        [ -z "${_get_i3lock_params__delpress}" ] && _get_i3lock_params__delpress="a52a2aff"
+        [ -z "${_get_i3lock_params__delpress}" ] && _get_i3lock_params__delpress="a02020ff"
 
         i3lock_color_params="--insidecolor=${_get_i3lock_params__inside}|
                              --insidevercolor=${_get_i3lock_params__inside_verification}|
@@ -151,6 +166,28 @@ _get_i3lock_params() {
                              --linecolor=${_get_i3lock_params__line}|
                              --keyhlcolor=${_get_i3lock_params__keypress}|
                              --bshlcolor=${_get_i3lock_params__delpress}"
+        #what the locker of 2012 has fixed in its code is an option in the current one, and
+        #is given to keep that look: a ring 10 wide, the two ends of a key press drawn in
+        #the line color, no text in any state and no password check for an empty <Enter>
+        [ X"${_get_i3lock_params__names}" = X"dashed" ] && \
+        i3lock_color_params="--inside-color=${_get_i3lock_params__inside}|
+                             --insidever-color=${_get_i3lock_params__inside_verification}|
+                             --insidewrong-color=${_get_i3lock_params__inside_wrong}|
+                             --ring-color=${_get_i3lock_params__ring}|
+                             --ringver-color=${_get_i3lock_params__ring_verification}|
+                             --ringwrong-color=${_get_i3lock_params__ring_wrong}|
+                             --line-color=${_get_i3lock_params__line}|
+                             --separator-color=${_get_i3lock_params__line}|
+                             --keyhl-color=${_get_i3lock_params__keypress}|
+                             --bshl-color=${_get_i3lock_params__delpress}|
+                             --ring-width=10|
+                             --ignore-empty-password|
+                             --verif-text=|
+                             --wrong-text=|
+                             --noinput-text=|
+                             --lock-text=|
+                             --lockfailed-text=|
+                             --no-modkey-text"
         i3lock_color_params="$(printf "%s" "${i3lock_color_params}"|awk '{ sub(/[ \t]+/, ""); printf "%s", $0 }')"
     fi
 
@@ -194,54 +231,43 @@ _relogin() {
     i3-msg restart &
 }
 
-_reboot() {
-    _legacy_reboot() {
-        PATH="${PATH}:/sbin/"
-        ${_sudo} 'shutdown -r now'
-    }
-
-    if command -v "dbus-send" >/dev/null 2>&1; then
-        dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" \
-            /org/freedesktop/ConsoleKit/Manager \
-            org.freedesktop.ConsoleKit.Manager.Restart || _legacy_reboot
-    else
-        _legacy_reboot
-    fi
+_inhibitors() {
+    #$1 => shutdown or sleep: who holds a block inhibitor on it and why, from logind's
+    #list, where each entry is "what" "who" "why" "mode" uid pid
+    busctl call org.freedesktop.login1 /org/freedesktop/login1 \
+        org.freedesktop.login1.Manager ListInhibitors 2>/dev/null | awk -F'"' -v what="${1}" '{
+        for (i = 2; i + 6 <= NF; i += 8)
+            if ($(i + 6) == "block" && index(":" $i ":", ":" what ":"))
+                printf "%s%s (%s)", (n++ ? ", " : ""), $(i + 2), $(i + 4)
+    }'
 }
 
-_shutdown() {
-    _legacy_shutdown() {
-        PATH="${PATH}:/sbin/"
-        ${_sudo} 'shutdown -h now'
-    }
+_power() {
+    #$1 => poweroff, reboot, suspend or hibernate; on failure, why in _power__error
+    #systemd-logind does them for the user of the session at the machine, polkit
+    #deciding, with no password and no terminal, other users logged in or not. A
+    #block inhibitor is respected: logind refuses, and the menu names who holds it.
+    #For suspend and hibernate minos-config may name another command, run as
+    #written, by this user
+    _power__cmd=""
+    case "${1}" in
+        suspend|hibernate) _power__cmd="$(minos-config "${1}" 2>/dev/null)" ;;
+    esac
+    [ -z "${_power__cmd}" ] && _power__cmd="systemctl ${1}"
 
-    if command -v "dbus-send" >/dev/null 2>&1; then
-        dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" \
-            /org/freedesktop/ConsoleKit/Manager \
-            org.freedesktop.ConsoleKit.Manager.Stop || _legacy_shutdown
-    else
-        _legacy_shutdown
+    if ! command -v "${_power__cmd%% *}" >/dev/null 2>&1; then
+        _power__error="install '${_power__cmd%% *}' to run this option"
+        return 1
     fi
-}
-
-_suspend() {
-    PATH="${PATH}:/usr/sbin/"
-    suspend="$(minos-config suspend 2>/dev/null)"
-    [ -z "${suspend}" ] && suspend="pm-suspend"
-    if ! command -v "${suspend}" >/dev/null 2>&1; then
-        _die "install '${suspend}' to run this option"
-    fi
-    ${_sudo} "${suspend}"
-}
-
-_hibernate() {
-    PATH="${PATH}:/usr/sbin/"
-    hibernate="$(minos-config hibernate 2>/dev/null)"
-    [ -z "${hibernate}" ] && hibernate="pm-hibernate"
-    if ! command -v "${hibernate}" >/dev/null 2>&1; then
-        _die "install '${hibernate}' to run this option"
-    fi
-    ${_sudo} "${hibernate}"
+    _power__error="$(${_power__cmd} 2>&1 >/dev/null)" && return 0
+    [ -z "${_power__error}" ] && _power__error="'${_power__cmd}' failed"
+    _power__error="$(printf "%s" "${_power__error}" | tr '\n' ' ')"
+    #logind before systemd 257 (22.04, 24.04) answers an inhibitor with a request for a password
+    case "${1}" in poweroff|reboot) _power__what="shutdown" ;; *) _power__what="sleep" ;; esac
+    _power__inhibitors="$(_inhibitors "${_power__what}")"
+    [ -n "${_power__inhibitors}" ] && \
+        _power__error="${1} blocked by ${_power__inhibitors}: ${_power__error}"
+    return 1
 }
 
 _confirm() {
@@ -275,26 +301,18 @@ else
     choice="${1}"
 fi
 
-if command -v "gksudo" >/dev/null 2>&1; then
-    _sudo="gksudo"
-else
-    _sudo="sudo"
-fi
-
-[ X"${LOGNAME}" = X"root" ] && _sudo=""
-
 case "${choice}" in
-     -h|--help) _usage && exit                 ;;
-          lock) _lock                          ;;
-       relogin) _relogin                       ;;
-        logout) _confirm logout   && _logout   ;;
-reboot|restart) _confirm reboot   && _reboot   ;;
- shutdown|halt) _confirm shutdown && _shutdown ;;
-       suspend) _lock &
+     -h|--help) _usage && exit             ;;
+          lock) _lock                      ;;
+       relogin) _relogin                   ;;
+        logout) _confirm logout && _logout ;;
+reboot|restart) _confirm reboot   && { _power reboot   || _die "${_power__error}"; } ;;
+ shutdown|halt) _confirm shutdown && { _power poweroff || _die "${_power__error}"; } ;;
+suspend|hibernate)
+                _lock &
                 player-ctrl pause >/dev/null 2>&1
-                _suspend  ;;
-     hibernate) _lock &
-                player-ctrl pause >/dev/null 2>&1
-               _hibernate ;;
-             *) exit 1    ;;
+                #the menu cannot take the keyboard while the lock holds it: why the
+                #machine is still awake is said once the lock is open again
+                _power "${choice}" || { wait; _die "${_power__error}"; } ;;
+             *) exit 1 ;;
 esac

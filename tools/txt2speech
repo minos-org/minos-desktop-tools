@@ -5,13 +5,16 @@
 #example: txt2speech -en "hello world"
 #audio plays saying "hello world"
 
-VERSION="2015.12.25-16:08"
+VERSION="2026.11.19-00:43"
 
 SPEECH_SYNTHESIZERS="google voicerss espeak"
 SPEECH_SYNTHESIZERS_MEDIUM="voicerss google espeak"
 SPEECH_SYNTHESIZERS_BIG="voicerss espeak"
 SPEECH_SYNTHESIZERS_HUGE="espeak voicerss"
 VOICERSS_TK='e7f014e16bcb48579bb1dbcd70149114'
+#the speech of each phrase, kept per user: a fixed name in the shared temporary directory is one
+#any user can create first
+CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}/txt2speech"
 
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
@@ -67,13 +70,11 @@ _notify() {
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
-        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
-            if command -v "gxmessage" 2>/dev/null; then
-                font="Monaco 9"
-                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+        if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}" "${2}"; then
+            if command -v gxmessage >/dev/null 2>&1; then
+                DISPLAY=${DISPLAY:-:0} gxmessage -fn "Monaco 9" -buttons OK "${1}${2:+: ${2}}"
             else
-                font="fixed"
-                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+                DISPLAY=${DISPLAY:-:0} LC_ALL=C.UTF-8 xmessage -xrm '*international: true' -xrm '*fontSet: -misc-fixed-medium-r-normal--13-*-*-*-*-*-*-*' -bg black -fg '#c7c1cc' -buttons OK "${1}${2:+: ${2}}"
             fi
         fi
     else
@@ -112,14 +113,14 @@ _check_synthesizer() {
 _txt2speech() {
     _txt2speech__google() {
         _tk() {
-            if command -v "python" >/dev/null 2>&1; then
-                printf "%s\\n" "${py_google_tk_script}" > /tmp/_tk.py
-                python /tmp/_tk.py "${*}"
-                rm -rf /tmp/_tk.py
-            else
-                #TODO 18-12-2015 12:36 >> additional tk implementations
-                :
-            fi
+            #the script reaches python on its standard input, never through a file
+            for _tk__python in python3 python; do
+                if command -v "${_tk__python}" >/dev/null 2>&1; then
+                    printf "%s\\n" "${py_google_tk_script}" | "${_tk__python}" - "${*}"
+                    return
+                fi
+            done
+            #TODO 18-12-2015 12:36 >> additional tk implementations
         }
 
         _txt2speech__google_fetch() {
@@ -267,8 +268,8 @@ _txt2speech() {
         _txt2speech__md5sum="no_checksum_available"
     fi
 
-    _txt2speech__tmp_dir="/tmp/txt2speech_${_txt2speech__md5sum}"
-    mkdir /tmp 2>/dev/null; mkdir "${_txt2speech__tmp_dir}" 2>/dev/null
+    _txt2speech__tmp_dir="${CACHE_DIR}/${_txt2speech__md5sum}"
+    mkdir -p "${_txt2speech__tmp_dir}" 2>/dev/null
 
     [ -f "${_txt2speech__tmp_dir}/a.mp3" ] && _txt2speech "${_txt2speech__tmp_dir}/a.mp3"
     _txt2speech__txt="${*}"
@@ -297,6 +298,11 @@ _txt2speech() {
 }
 
 _update() {
+    #the new version is fetched to a private temporary file and checked there (a shell script
+    #sh -n accepts, newer than this one), never run; then it is written beside this program and
+    #renamed over it, one atomic step in its own directory, with sudo for that step alone when
+    #the directory is not this user's. The source publishes no checksum or signature: https,
+    #its certificate checked, is what vouches for it
     _u__current_file="$(cd "$(dirname "${0}")" && pwd)/$(basename "${0}")"
     _u__current_version_long="$(awk -F\" \
         '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
@@ -311,16 +317,22 @@ _update() {
     printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to update within the program" >&2
     return 1; }
 
-    _u__error_msg="$(wget -q -O- --no-check-certificate \
-    https://raw.githubusercontent.com/minos-org/minos-desktop-tools/master/tools/txt2speech \
-        > "/tmp/${progname}.${$}" 2>/dev/null || curl -s  \
-    https://raw.githubusercontent.com/minos-org/minos-desktop-tools/master/tools/txt2speech \
-    > "/tmp/${progname}.${$}" 2>/dev/null)" || { printf "%s\\n%s\\n" \
-        "ERROR: Failed to fetch update, please try later or update manually" \
-        "${_u__error_msg}" >&2; return 1; }
+    _u__url="https://raw.githubusercontent.com/minos-org/minos-desktop-tools/master/tools/txt2speech"
+    _u__new="$(mktemp)" || { printf "%s\\n" \
+        "ERROR: Failed to create a temporary file, please update manually" >&2; return 1; }
+    if ! wget -q -O- "${_u__url}" > "${_u__new}" 2>/dev/null && \
+       ! curl -fsSL "${_u__url}" > "${_u__new}" 2>/dev/null; then
+        printf "%s\\n" "ERROR: Failed to fetch update, please try later or update manually" >&2
+        rm -f "${_u__new}"; return 1
+    fi
+    if [ ! -s "${_u__new}" ] || [ X"$(head -n 1 "${_u__new}")" != X"#!/bin/sh" ] || \
+       ! sh -n "${_u__new}" 2>/dev/null; then
+        printf "%s\\n" "ERROR: The update is not a valid ${progname}, please try later or update manually" >&2
+        rm -f "${_u__new}"; return 1
+    fi
 
     _u__update_version_long="$(awk -F\" \
-        '/VERSION=/{print $2;exit}' "/tmp/${progname}.${$}" 2>/dev/null)"
+        '/VERSION=/{print $2;exit}' "${_u__new}" 2>/dev/null)"
     _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
         '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
     [ -z "${_u__update_version}" ] && _u__update_version="0"
@@ -328,22 +340,25 @@ _update() {
     if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
         printf "%s %s\\n" "Updating from version" \
             "${_u__current_version_long} to ${_u__update_version_long} ..."
-        chmod +x "/tmp/${progname}.${$}"
-        if ! mv -f "/tmp/${progname}.${$}" "${_u__current_file}" 2>/dev/null; then
-            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
-            printf "%s\\n" "INFO : trying with sudo ..."
-            if command -v "sudo" >/dev/null 2>&1; then
-                sudo mv "/tmp/${progname}.${$}" "${_u__current_file}" || return 1
-            else
-                printf "%s\\n" "ERROR: sudo isn't available, exiting ..."
-                rm -rf "/tmp/${progname}.${$}"; return 1
-            fi
+        _u__install='t="$(mktemp "${1}.XXXXXX")" && cat "${2}" > "${t}" && chmod 755 "${t}" &&
+            mv -f "${t}" "${1}" && exit 0; rm -f "${t}"; exit 1'
+        if [ -w "$(dirname "${_u__current_file}")" ]; then
+            sh -c "${_u__install}" sh "${_u__current_file}" "${_u__new}"
+        elif command -v "sudo" >/dev/null 2>&1; then
+            printf "%s\\n" "INFO : no write permissions on $(dirname "${_u__current_file}"), trying with sudo ..."
+            sudo sh -c "${_u__install}" sh "${_u__current_file}" "${_u__new}"
+        else
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file} and sudo isn't available, exiting ..." >&2
+            false
         fi
+        _u__status="${?}"
+        rm -f "${_u__new}"
+        [ "${_u__status}" = "0" ] || return 1
         printf "%s %s\\n" "${progname} is up-to-date (${_u__update_version_long})"
         return 0
     fi
     printf "%s %s\\n" "${progname} is up-to-date (${_u__current_version_long})"
-    rm -rf "/tmp/${progname}.${$}"
+    rm -f "${_u__new}"
 }
 
 if [ ! -t 0 ]; then
@@ -398,7 +413,7 @@ for arg; do #parse options
             fi ;;
         -o*) OUTPUT_FNAME="${1#-o}"; shift ;;
         --output*) OUTPUT_FNAME="${1#--output}"; shift ;;
-        -c|--clean-cache) rm -rf /tmp/txt2speech_* && \
+        -c|--clean-cache) rm -rf "${CACHE_DIR}" && \
             printf "%s\\n" "Cache cleared successfully" && exit ;;
         -U|--update) _update; exit "${?}" ;;
         '-') : ;; #special stdout character

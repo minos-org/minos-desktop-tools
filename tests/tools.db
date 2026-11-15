@@ -1,30 +1,5 @@
 #Based on the GNU shtool test suite
 
-@begin{backup-mozilla}
-backup-mozilla -h ; test X"${?}"                                      = X"0"
-printf "%s" '-h' | backup-mozilla; test X"${?}"                       = X"0"
-backup-mozilla --help ; test X"${?}"                                  = X"0"
-printf "%s" '--help' | backup-mozilla; test X"${?}"                   = X"0"
-backup-mozilla --cui; test X"${?}"                                    = X"1"
-printf "%s" '--cui' | backup-mozilla; test X"${?}"                    = X"1"
-test X"$(backup-mozilla -h |head -1)"                                 = X"Usage: backup-mozilla [options] [dir]"
-test X"$(printf "%s" '-h' | backup-mozilla |head -1)"                 = X"Usage: backup-mozilla [options] [dir]"
-test X"$(backup-mozilla --help |head -1)"                             = X"Usage: backup-mozilla [options] [dir]"
-test X"$(printf "%s" '--help' | backup-mozilla |head -1)"             = X"Usage: backup-mozilla [options] [dir]"
-test X"$(backup-mozilla -cui | head -1)"                              = X""
-test X"$(backup-mozilla -cui 2>&1|head -1)"                           = X"backup-mozilla: unrecognized option '-cui'"
-test X"$(printf "%s" '-cui' | backup-mozilla 2>&1|head -1)"           = X"backup-mozilla: unrecognized option '-cui'"
-test X"$(backup-mozilla -n |head -1)"                                 = X""
-test X"$(backup-mozilla -n 2>&1|head -1)"                             = X"Option '-n' requires a parameter"
-test X"$(printf "%s" '-n' | backup-mozilla 2>&1|head -1)"             = X"Option '-n' requires a parameter"
-test X"$(backup-mozilla -n cui 2>&1|head -1)"                         = X"Option '-n' requires a number: 'cui'"
-test X"$(printf "%s" '-n cui' | backup-mozilla 2>&1|head -1)"         = X"Option '-n' requires a number: 'cui'"
-if ! pgrep firefox >/dev/null 2>&1; then backup-mozilla; test X"${?}" = X"1"; fi
-#backup-mozilla -s -n 4 && test "$(find ~/.mozilla-backups -iname "*.tar.*"|wc -l)" -lt "5"
-#n="$(find ~/.mozilla-backups -iname "*.tar.*"|wc -l)"  && backup-mozilla -c
-#nn="$(find ~/.mozilla-backups -iname "*.tar.*"|wc -l)" && test X"$((n+1))" = X"${nn}"
-@end
-
 @begin{dmenu-alarm}
 dmenu-alarm & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "o@o/"  && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"1"
 dmenu-alarm & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "1s" && xdotool key "Return"
@@ -227,6 +202,30 @@ minos-help & sleep 0.3 && test ! -z "$(ps aux | awk '/got it/ {if ($0 !~ "awk") 
 minos-help; test X"${?}"                              = X"1"
 kill "$(ps aux | awk '/got it/ {if ($0 !~ "awk") print $2}')"
 test -z "$(ps aux | awk '/got it/ {if ($0 !~ "awk") print $2}')"
+@end
+
+@begin{minos-menu}
+minos-menu -h; test X"${?}"                           = X"0"
+printf "%s" '-h' | minos-menu; test X"${?}"           = X"0"
+minos-menu -c; test X"${?}"                           = X"1"
+printf "%s" '-c' | minos-menu; test X"${?}"           = X"1"
+minos-menu --help ; test X"${?}"                      = X"0"
+printf "%s" '--help' | minos-menu; test X"${?}"       = X"0"
+test X"$(minos-menu -h |head -1)"                     = X'Usage: minos-menu [options] "entry | key | command"...'
+test X"$(printf "%s" '-h' | minos-menu |head -1)"     = X'Usage: minos-menu [options] "entry | key | command"...'
+test X"$(minos-menu -c | head -1)"                    = X""
+test X"$(minos-menu -c 2>&1|head -1)"                 = X"minos-menu: unrecognized option '-c'"
+test X"$(printf "%s" '-c' | minos-menu 2>&1|head -1)" = X"minos-menu: unrecognized option '-c'"
+minos-menu < /dev/null; test X"${?}"                  = X"1"
+test X"$(minos-menu 2>&1 < /dev/null | head -1)"      = X"minos-menu: no entries"
+minos-menu "One | F1" < /dev/null; test X"${?}"       = X"1"
+test X"$(minos-menu "One | F1" 2>&1 < /dev/null)"     = X"not an entry (entry | key | command): One | F1"
+printf "%s\\n" "#!/bin/sh" "cat > rows; echo 1" > rofi && chmod +x rofi
+PATH="${PWD}:${PATH}" minos-menu "One | F1 | touch one" " Dos <ñ> | Win+2 |  touch two | cat" < /dev/null; sleep 0.3; test -f two
+test ! -f one
+test X"$(wc -l < rows | tr -d ' ')"                   = X"2"
+test X"$(head -1 rows)"                               = X'One       <span alpha="60%">F1</span>'
+test X"$(tail -1 rows)"                               = X'Dos &lt;ñ&gt;   <span alpha="60%">Win+2</span>'
 @end
 
 @begin{minos-statusbar}

@@ -4,7 +4,10 @@
 
 #minos statusbar looks better with the xbc icon patch
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
-minos_statusbar="/tmp/minos-statusbar"
+#conky's config, made from the base for this user, in the user's runtime directory: conky runs the
+#commands its config names, and a fixed name in the shared temporary directory is one any user can
+#create first
+minos_statusbar="${XDG_RUNTIME_DIR:-${HOME}/.cache}/minos-statusbar"
 
 _usage() {
     printf "%s\\n" "Usage: ${progname} [options]"
@@ -78,9 +81,12 @@ fi
 if [ -f "${minos_statusbar_base}" ]; then
     statusbar_icons="$(minos-config statusbar-icons 2>/dev/null)"
     [ -z "${statusbar_icons}" ] && statusbar_icons="sm4tik"
-    statusbar_wireless="$(_get_1st_network_interface "wl*")"
-    statusbar_ethernet="$(_get_1st_network_interface "eth*\|en*")"
+    #by the start of the name: unanchored, "wl*" and "en*" matched any name holding a w or an e (docker0,
+    #veth*, a bridge), which could take the bar's place before the machine's own card
+    statusbar_wireless="$(_get_1st_network_interface "^wl")"
+    statusbar_ethernet="$(_get_1st_network_interface "^\(eth\|en\)")"
 
+    mkdir -p "$(dirname "${minos_statusbar}")"
     cp "${minos_statusbar_base}" "${minos_statusbar}"
 
     [ -n "${statusbar_icons}" ]    && \

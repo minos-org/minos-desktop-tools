@@ -49,27 +49,9 @@ else
 fi
 
 if ! command -v "txt2speech" >/dev/null 2>&1; then
-    if command -v "wget" >/dev/null 2>&1; then
-        if [ ! -f "/tmp/txt2speech" ]; then
-            wget -q -O- --no-check-certificate \
-                https://raw.githubusercontent.com/minos-org/minos-desktop-tools/master/tools/txt2speech \
-                > /tmp/txt2speech && txt2speechbin="/tmp/txt2speech" || \
-                _die "install 'txt2speech' to run this program"
-        else
-            txt2speechbin="/tmp/txt2speech"
-        fi
-    else
-        _die "install 'txt2speech' to run this program"
-    fi
+    _die "install 'txt2speech' to run this program"
 fi
 
 [ -z "${phrase}" ] && exit 1;
 
-if [ -z "${txt2speechbin}" ]; then
-    txt2speech ${phrase}
-else
-    if ! sh "${txt2speechbin}" ${phrase}; then
-         sh "${txt2speechbin}" -U && \
-         sh "${txt2speechbin}" ${phrase};
-    fi
-fi
+txt2speech ${phrase}

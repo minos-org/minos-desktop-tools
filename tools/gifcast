@@ -20,13 +20,11 @@ _notify() {
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
-        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
-            if command -v "gxmessage" 2>/dev/null; then
-                font="Monaco 9"
-                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+        if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}" "${2}"; then
+            if command -v gxmessage >/dev/null 2>&1; then
+                DISPLAY=${DISPLAY:-:0} gxmessage -fn "Monaco 9" -buttons OK "${1}${2:+: ${2}}"
             else
-                font="fixed"
-                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+                DISPLAY=${DISPLAY:-:0} LC_ALL=C.UTF-8 xmessage -xrm '*international: true' -xrm '*fontSet: -misc-fixed-medium-r-normal--13-*-*-*-*-*-*-*' -bg black -fg '#c7c1cc' -buttons OK "${1}${2:+: ${2}}"
             fi
         fi
     else
@@ -60,8 +58,10 @@ elif ! command -v "convert" >/dev/null 2>&1; then
 fi
 
 random_name="$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8)"
-tmp_avi="/tmp/${random_name}.${$}.avi"
-trap 'rm -f -- "${tmp_avi}"' INT TERM HUP EXIT
+#the capture, in a directory of mktemp's: ffmpeg writes a new file there, never one planted first
+tmp_dir="$(mktemp -d)" || { _notify "[-] Error" "cannot create a temporary directory"; exit 1; }
+tmp_avi="${tmp_dir}/gifcast.avi"
+trap 'rm -rf -- "${tmp_dir}"' INT TERM HUP EXIT
 
 if [ -n "${1}" ]; then
     output_file="${1}"
@@ -76,15 +76,12 @@ esac
 
 _notify "[+] Gifcast" "in 3.., 2.., 1.., smile =)!"
 
-set -e
-
-ffcast -s ffmpeg -r 20 -- -vcodec huffyuv "${tmp_avi}"
+#each step ends the program when it fails; set -e did, and also when _notify found no
+#notification daemon to kill, between the capture and its conversion
+ffcast -s ffmpeg -r 20 -- -vcodec huffyuv "${tmp_avi}" || exit
 _notify "[+] Optimising" "${output_file}"
-convert -layers Optimize -set delay 10 "${tmp_avi}" "${output_file}"
-rm -rf "${tmp_avi}"
+convert -layers Optimize -set delay 10 "${tmp_avi}" "${output_file}" || exit
 _notify "[+] Done" "${output_file}"
-
-set +e
 
 if command -v "xclip" >/dev/null 2>&1; then
     printf "%s" "${output_file}" 2>/dev/null | xclip -selection clipboard

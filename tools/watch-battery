@@ -1,11 +1,10 @@
 #!/bin/sh
 #description: display a warning when the system is running out of energy
-#             suspend|hibernate if no manual action is taken
+#             suspend|hibernate if no manual action is taken, power off if that fails
 #usage: watch-battery
 
-#it indend to be used as a cron job
-#eg, (every 3 min)
-#*/3 * * * * /path/to/this/script
+#minos runs it every minute as the user of the session, from the user timer watch-battery.timer
+#(systemd --user, enabled for every user): it reads that user's config and acts as that user
 
 PROGNAME="$(basename "${0}")"
 
@@ -13,7 +12,7 @@ PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
 _usage() {
     printf "%s\\n" "Usage: ${PROGNAME}"
-    printf "%s\\n" "This program should be run as a cron job, eg.: */1 * * * * ${PROGNAME}"
+    printf "%s\\n" "This program should be run every minute, as minos' user timer watch-battery.timer does"
 }
 
 _die() {
@@ -24,42 +23,13 @@ _die() {
 _notify() {
     [ -z "${1}" ] && return 1
 
-    #set -x
-    #exec > /tmp/watch-battery.debug 2>&1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
-        if [ X"${LOGNAME}" = X"root" ]; then
-            #hack to allow notifications from cronjobs
-            _notify__pid=$(pgrep dbus-launch|head -1)
-            _notify__user=$(grep -z USER /proc/"${_notify__pid}"/environ | sed 's/USER=//')
-            _notify__dbus="$(awk \
-                '/^DBUS_SESSION_BUS_ADDRESS/ {sub(/DBUS_SESSION_BUS_ADDRESS=/,""); print $0; exit}' /home/"${_notify__user}"/.dbus/session-bus/$(dbus-uuidgen --get)-*)"
-            _notify__display=$(grep -z DISPLAY /proc/"${_notify__pid}"/environ | sed 's/DISPLAY=//')
-
-            #fucking hate dbus/notify-send
-            su "${_notify__user}" -c "sh -c 'DISPLAY=\"${_notify__display}\" notify-send -t 1000 \"${1}\"  \"${2}\"'"
-            su "${_notify__user}" -c "sh -c 'DBUS_SESSION_BUS_ADDRESS=\"${_notify__dbus}\" DISPLAY=\"${_notify__display}\" notify-send -t 1000 \"${1}\"  \"${2}\"'"
-            #if ! su "${_notify__user}" -c "sh -c 'DBUS_SESSION_BUS_ADDRESS=\"${_notify__dbus}\" DISPLAY=\"${_notify__display}\" notify-send -t 1000 \"${1}\"  \"${2}\"'"; then
-            #if ! su "${_notify__user}" -c "sh -c 'DISPLAY=\"${_notify__display}\" notify-send -t 1000 \"${1}\"  \"${2}\"'"; then
-            #if ! notify-send -t 1000 "${1}"  "${2}"; then
-            if [ ! "${?}" = "0" ]; then
-                if command -v "gxmessage" 2>/dev/null; then
-                    _notify__font="Monaco 9"
-                    DISPLAY="${_notify__display}" gxmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
-                else
-                    _notify__font="fixed"
-                    DISPLAY="${_notify__display}" xmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
-                fi
-            fi
-        else
-            if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
-                if command -v "gxmessage" 2>/dev/null; then
-                    _notify__font="Monaco 9"
-                    DISPLAY=:0 gxmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
-                else
-                    _notify__font="fixed"
-                    DISPLAY=:0 xmessage "${_notify__font:+-fn "$_notify__font"}" "${1} ${2}" "ok"
-                fi
+        if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}" "${2}"; then
+            if command -v gxmessage >/dev/null 2>&1; then
+                DISPLAY=${DISPLAY:-:0} gxmessage -fn "Monaco 9" -buttons OK "${1}${2:+: ${2}}"
+            else
+                DISPLAY=${DISPLAY:-:0} LC_ALL=C.UTF-8 xmessage -xrm '*international: true' -xrm '*fontSet: -misc-fixed-medium-r-normal--13-*-*-*-*-*-*-*' -bg black -fg '#c7c1cc' -buttons OK "${1}${2:+: ${2}}"
             fi
         fi
     else
@@ -69,6 +39,35 @@ _notify() {
             printf "%s: %s\\n" "${1}" "${2}"
         fi
     fi
+}
+
+_act() {
+    #run the command for a minute at most; on failure, why in _act__error, without quotes,
+    #which _notify cannot pass. Its errors go to a file: a menu it leaves open would hold a
+    #pipe open; and the lock it may leave (dmenu-session) does not keep ours. The file is
+    #mktemp's, never a fixed name in the shared temporary directory, which any user can plant
+    #first. Without one the action still runs, its errors unread. From the timer (systemd sets
+    #INVOCATION_ID) the command runs in a scope of its own: systemd ends this service with
+    #every process in it, and the lock dmenu-session leaves on the screen must outlive it
+    if _act__errfile="$(mktemp)"; then
+        _act__err="${_act__errfile}"
+    else
+        _act__errfile=""; _act__err="/dev/null"
+    fi
+    if [ -n "${INVOCATION_ID}" ]; then
+        timeout 60 systemd-run --user --scope --quiet --collect -- "${@}" >/dev/null 2>"${_act__err}" 9>&-
+    else
+        timeout 60 "${@}" >/dev/null 2>"${_act__err}" 9>&-
+    fi
+    _act__status="${?}"
+    if [ -n "${_act__errfile}" ]; then
+        _act__error="$(tr '\n' ' ' < "${_act__errfile}" | tr -d "'\"")"
+        rm -f "${_act__errfile}"
+    else
+        _act__error="its errors were lost, mktemp failed"
+    fi
+    [ "${_act__status}" = "124" ] && _act__error="still running after a minute"
+    return "${_act__status}"
 }
 
 _valid_batt_values() {
@@ -106,23 +105,36 @@ for arg in "${@}"; do #parse options
     esac
 done
 
-[ X"${LOGNAME}" = X"root" ] && user="$(grep 1000 /etc/group | cut -d: -f1)" || user="${LOGNAME}"
-bin="$(HOME=/home/"${user}" minos-config battery 2>/dev/null | awk '{print $1}')"
+#the battery key names the program that watches the battery, this one by default: a config without the
+#key, or with it commented out, leaves the watch on, never an exec of an empty name
+bin="$(minos-config battery 2>/dev/null | awk '{print $1}')"
 case "${bin}" in
       no|NO|No|nO|false|disabled) exit ;;
-    watch-battery) :             ;;
+    ''|watch-battery) :          ;;
                 *) exec "${bin}" ;;
 esac
 
-exec 9>/tmp/"${PROGNAME}".lock
-[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${PROGNAME}".lock
+#the notifications and the action reach the user's X session by its display, which the user's
+#systemd does not know (the session bus is dbus-launch's, not systemd's): logind does, as the
+#display of this user's graphical session; notify-send finds the session bus from the display
+if [ -z "${DISPLAY}" ]; then
+    display_session="$(loginctl show-user "$(id -u)" -p Display --value 2>/dev/null)"
+    [ -z "${display_session}" ] || \
+        DISPLAY="$(loginctl show-session "${display_session}" -p Display --value 2>/dev/null)"
+    [ -z "${DISPLAY}" ] || export DISPLAY
+fi
+
+#the lock and the last warning given, in the user's runtime directory, private to the user
+rundir="${XDG_RUNTIME_DIR:-${HOME}}"
+
+exec 9>"${rundir}/${PROGNAME}".lock
 if ! flock -n 9 ; then
     _notify "${PROGNAME}: another instance is running";
     exit 1
 fi
 
-if [ ! -f "$(command -v notify-send)" ] || [ ! -f "$(command -v pm-hibernate)" ] || [ ! -f "$(command -v acpi)" ]; then
-    _notify  "Error" "install 'acpi', 'notify-send' and 'pm-utils' to run this program"
+if [ ! -f "$(command -v notify-send)" ] || [ ! -f "$(command -v acpi)" ]; then
+    _notify  "Error" "install 'acpi' and 'notify-send' to run this program"
     exit 1
 fi
 
@@ -131,31 +143,21 @@ fi
 stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
 #battery percentage
 batt_current="$(acpi -b |awk '{if ($0 ~ "%,") sub("%,", ""); else sub("%", ""); print $4}')"
-batt_last_seen="$(cat /tmp/"${PROGNAME}" 2>/dev/null)"
-batt_at="$(HOME=/home/"${user}" minos-config battery-alerts 2>/dev/null)"
-[ -z "$(_valid_batt_values "${batt_at}")" ] && batt_at="$(HOME=/home/"${user}" minos-config battery-alerts 2>/dev/null)"
+batt_last_seen="$(cat "${rundir}/${PROGNAME}".last 2>/dev/null)"
+batt_at="$(minos-config battery-alerts 2>/dev/null)"
+[ -z "$(_valid_batt_values "${batt_at}")" ] && batt_at="$(minos-config battery-alerts 2>/dev/null)"
 [ -z "$(_valid_batt_values "${batt_at}")" ] && batt_at="15,10,7,5"
 batt_at="$(_sort_batt_values "${batt_at}")"
 
-action="$(HOME=/home/"${user}" minos-config battery-action 2>/dev/null)"
+action="$(minos-config battery-action 2>/dev/null)"
 if [ -z "${action}" ]; then
     if command -v "dmenu-session" >/dev/null 2>&1; then
         action="$(command -v "dmenu-session") hibernate"
     else
-        action="$(HOME=/home/"${user}" minos-config hibernate 3>/dev/null)"
-        [ -z "${action}" ] && action="$(command -v pm-hibernate)"
+        action="$(minos-config hibernate 2>/dev/null)"
+        [ -z "${action}" ] && action="systemctl hibernate"
     fi
 fi
-
-case "${action}" in
-    dmenu-session*) _sudo="" ;;
-    *)  if command -v "gksudo" >/dev/null 2>&1; then
-            _sudo="gksudo"
-        else
-            _sudo="sudo"
-        fi
-        ;;
-esac
 #=============
 
 if [ X"${stat}" = X"Discharging" ]; then
@@ -181,10 +183,13 @@ if [ X"${stat}" = X"Discharging" ]; then
 
                     if [ X"${stat}" = X"Discharging" ]; then
                         [ -x "$(command -v mpc)" ] && mpc stop
-                        if [ X"${LOGNAME}" = X"root" ]; then
-                            HOME=/home/$user USER=$user DISPLAY=:0 ${action}
-                        else
-                            ${_sudo} ${action}
+                        #a refusal (no swap to hibernate to, an inhibitor) or a menu still open a
+                        #minute later ends in a power off, not in a dead battery; an inhibitor that
+                        #stops that too is respected, and said
+                        if ! _act ${action}; then
+                            _notify "Critical" "${action} did not work, powering off: ${_act__error}"
+                            _act systemctl poweroff || \
+                                _notify "Critical" "the system cannot power off: ${_act__error}"
                         fi
                     fi
                     ;;
@@ -194,8 +199,7 @@ if [ X"${stat}" = X"Discharging" ]; then
                     batt_last_seen="${batt_value}"
                     ;;
             esac
-            printf "%s\\n" "${batt_last_seen}" > /tmp/"${PROGNAME}"
-            [ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${PROGNAME}" || :
+            printf "%s\\n" "${batt_last_seen}" > "${rundir}/${PROGNAME}".last
             break
         fi
         [ X"${batt_values_buf}" = X"${batt_value}" ] && batt_values_buf='' || batt_values_buf="${batt_values_buf#*,}"
